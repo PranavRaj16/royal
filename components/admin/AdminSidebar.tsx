@@ -12,6 +12,7 @@ import {
   Building2,
   Palette,
   Settings,
+  Inbox,
   LogOut,
   ExternalLink,
   X,
@@ -39,6 +40,7 @@ export default function AdminSidebar({
       label: "OVERVIEW",
       items: [
         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
+        { label: "Requests", href: "/admin/requests", icon: Inbox },
       ],
     },
     {

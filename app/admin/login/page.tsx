@@ -169,25 +169,6 @@ export default function AdminLoginPage() {
               )}
             </button>
           </form>
-
-          {/* Demo credentials */}
-          <div className="mt-4 p-4 glass-gold rounded-xl border border-[#B4833E]/20 text-xs">
-            <p className="font-bold text-[#D4AF37] mb-2 uppercase tracking-wider text-[10px]">
-              Demo Credentials
-            </p>
-            <div className="space-y-1 text-[var(--muted)]">
-              <p>
-                Email:{" "}
-                <code className="text-white font-mono">
-                  admin@royaljewellers.com
-                </code>
-              </p>
-              <p>
-                Password:{" "}
-                <code className="text-white font-mono">RoyalAdmin@2026</code>
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </div>

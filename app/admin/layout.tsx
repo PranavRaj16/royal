@@ -12,6 +12,7 @@ import {
   ExternalLink,
   ChevronRight,
   Inbox,
+  Settings,
 } from "lucide-react";
 import { IBusiness } from "@/types";
 
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/products", icon: Package, label: "Products" },
   { href: "/admin/requests", icon: Inbox, label: "Requests" },
+  { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 
 export default function AdminLayout({
