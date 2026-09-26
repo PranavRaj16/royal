@@ -40,6 +40,34 @@ export default function SettingsPage() {
 
   const [loadingInitial, setLoadingInitial] = useState(true);
 
+  // DB Connection Status State
+  const [dbStatus, setDbStatus] = useState<{
+    connected?: boolean;
+    status?: string;
+    database?: string;
+    host?: string;
+    message?: string;
+    error?: string;
+  } | null>(null);
+  const [testingDb, setTestingDb] = useState(false);
+
+  const checkDbStatus = async () => {
+    setTestingDb(true);
+    try {
+      const res = await fetch("/api/admin/db-status");
+      const data = await res.json();
+      setDbStatus(data);
+    } catch (err) {
+      setDbStatus({
+        connected: false,
+        status: "disconnected",
+        error: err instanceof Error ? err.message : "Failed to reach server",
+      });
+    } finally {
+      setTestingDb(false);
+    }
+  };
+
   useEffect(() => {
     fetch("/api/auth/me")
       .then((res) => res.json())
@@ -51,6 +79,8 @@ export default function SettingsPage() {
       })
       .catch((err) => console.error(err))
       .finally(() => setLoadingInitial(false));
+
+    checkDbStatus();
   }, []);
 
   // Handle Profile / Email Change
@@ -391,19 +421,76 @@ export default function SettingsPage() {
           </div>
         </form>
 
-        {/* ── 3. SYSTEM & SECURITY ENVIRONMENT ── */}
+        {/* ── 3. DATABASE & SYSTEM ENVIRONMENT ── */}
         <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
-          <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-            <Database className="w-4 h-4 text-[#B4833E]" />
-            Database & System Info
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
+              <Database className="w-4 h-4 text-[#B4833E]" />
+              MongoDB & System Connection Status
+            </h2>
+            <button
+              type="button"
+              onClick={checkDbStatus}
+              disabled={testingDb}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D9D2C7] bg-[#FAF8F5] text-xs font-semibold text-gray-700 hover:border-[#B4833E] hover:text-[#B4833E] transition disabled:opacity-50"
+            >
+              {testingDb ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Checking...</span>
+                </>
+              ) : (
+                <>
+                  <Server className="w-3.5 h-3.5" />
+                  <span>Test Connection</span>
+                </>
+              )}
+            </button>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          {/* Connection Status Banner */}
+          {dbStatus && (
+            <div
+              className={`p-4 rounded-xl border text-xs leading-relaxed flex items-start gap-3 ${
+                dbStatus.connected
+                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                  : "bg-amber-50 border-amber-200 text-amber-900"
+              }`}
+            >
+              {dbStatus.connected ? (
+                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              )}
+              <div className="space-y-1">
+                <div className="font-bold flex items-center gap-2">
+                  <span>{dbStatus.connected ? "MongoDB Atlas Connected" : "Local Disk Storage Active (Offline Mode)"}</span>
+                  <span
+                    className={`inline-block w-2 h-2 rounded-full ${
+                      dbStatus.connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                    }`}
+                  />
+                </div>
+                <p className="text-[11px] text-gray-600">
+                  {dbStatus.connected
+                    ? `Database: ${dbStatus.database} (${dbStatus.host})`
+                    : "MongoDB Atlas is unreachable. Changes are saved directly to local persistent disk (data/local_db.json)."}
+                </p>
+                {!dbStatus.connected && (
+                  <p className="text-[11px] text-[#B4833E] font-medium pt-1">
+                    Tip: Add 0.0.0.0/0 to your MongoDB Atlas Network Access whitelist at cloud.mongodb.com to connect directly.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-1">
             <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9]">
               <span className="text-gray-400 block mb-1">Database Engine</span>
               <span className="font-bold text-gray-900 flex items-center gap-1.5">
                 <Server className="w-3.5 h-3.5 text-emerald-600" />
-                MongoDB (Mongoose ODM)
+                MongoDB Atlas / Mongoose
               </span>
             </div>
 
@@ -416,8 +503,11 @@ export default function SettingsPage() {
             </div>
 
             <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9]">
-              <span className="text-gray-400 block mb-1">Image Storage Driver</span>
-              <span className="font-bold text-gray-900">Local Disk / Cloudinary Ready</span>
+              <span className="text-gray-400 block mb-1">Disk Persistence Fallback</span>
+              <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                <Database className="w-3.5 h-3.5 text-[#B4833E]" />
+                data/local_db.json (Active)
+              </span>
             </div>
           </div>
         </div>

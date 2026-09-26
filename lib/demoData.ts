@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+
 export interface IDemoCategory {
   _id: string;
   name: string;
@@ -27,6 +30,59 @@ export interface IDemoProduct {
   images: { url: string; alt?: string; isPrimary?: boolean; order?: number }[];
   specifications: { key: string; value: string }[];
   createdAt?: string;
+}
+
+const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_FILE = path.join(DATA_DIR, "local_db.json");
+
+let isInitialized = false;
+
+function ensureLoaded() {
+  if (isInitialized) return;
+  isInitialized = true;
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+        DEMO_CATEGORIES.length = 0;
+        DEMO_CATEGORIES.push(...parsed.categories);
+      }
+      if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+        DEMO_PRODUCTS.length = 0;
+        DEMO_PRODUCTS.push(...parsed.products);
+      }
+      if (Array.isArray(parsed.requests)) {
+        DEMO_REQUESTS.length = 0;
+        DEMO_REQUESTS.push(...parsed.requests);
+      }
+    }
+  } catch (err) {
+    console.warn("[local_db] Failed to load local_db.json:", err);
+  }
+}
+
+export function savePersistedData() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(
+      DATA_FILE,
+      JSON.stringify(
+        {
+          categories: DEMO_CATEGORIES,
+          products: DEMO_PRODUCTS,
+          requests: DEMO_REQUESTS,
+        },
+        null,
+        2
+      ),
+      "utf-8"
+    );
+  } catch (err) {
+    console.warn("[local_db] Failed to write local_db.json:", err);
+  }
 }
 
 export const DEMO_CATEGORIES: IDemoCategory[] = [
@@ -450,7 +506,9 @@ export function addDemoProduct(product: Partial<IDemoProduct>): IDemoProduct {
     createdAt: new Date().toISOString(),
   };
 
+  ensureLoaded();
   DEMO_PRODUCTS.unshift(newProd);
+  savePersistedData();
   return newProd;
 }
 
@@ -468,15 +526,19 @@ export function addDemoCategory(category: Partial<IDemoCategory>): IDemoCategory
     isActive: category.isActive !== false,
   };
 
+  ensureLoaded();
   DEMO_CATEGORIES.push(newCat);
+  savePersistedData();
   return newCat;
 }
 
 export function getDemoProductById(id: string): IDemoProduct | null {
+  ensureLoaded();
   return DEMO_PRODUCTS.find((p) => p._id === id || p.slug === id) || null;
 }
 
 export function updateDemoProduct(id: string, updates: Partial<IDemoProduct>): IDemoProduct | null {
+  ensureLoaded();
   const index = DEMO_PRODUCTS.findIndex((p) => p._id === id || p.slug === id);
   if (index === -1) return null;
   DEMO_PRODUCTS[index] = {
@@ -484,17 +546,21 @@ export function updateDemoProduct(id: string, updates: Partial<IDemoProduct>): I
     ...updates,
     _id: DEMO_PRODUCTS[index]._id,
   };
+  savePersistedData();
   return DEMO_PRODUCTS[index];
 }
 
 export function deleteDemoProduct(id: string): boolean {
+  ensureLoaded();
   const index = DEMO_PRODUCTS.findIndex((p) => p._id === id || p.slug === id);
   if (index === -1) return false;
   DEMO_PRODUCTS.splice(index, 1);
+  savePersistedData();
   return true;
 }
 
 export function updateDemoCategory(id: string, updates: Partial<IDemoCategory>): IDemoCategory | null {
+  ensureLoaded();
   const index = DEMO_CATEGORIES.findIndex((c) => c._id === id || c.slug === id);
   if (index === -1) return null;
   DEMO_CATEGORIES[index] = {
@@ -502,13 +568,16 @@ export function updateDemoCategory(id: string, updates: Partial<IDemoCategory>):
     ...updates,
     _id: DEMO_CATEGORIES[index]._id,
   };
+  savePersistedData();
   return DEMO_CATEGORIES[index];
 }
 
 export function deleteDemoCategory(id: string): boolean {
+  ensureLoaded();
   const index = DEMO_CATEGORIES.findIndex((c) => c._id === id || c.slug === id);
   if (index === -1) return false;
   DEMO_CATEGORIES.splice(index, 1);
+  savePersistedData();
   return true;
 }
 
@@ -555,6 +624,7 @@ export const DEMO_REQUESTS: IDemoRequest[] = [
 ];
 
 export function createDemoRequest(data: Omit<IDemoRequest, "_id" | "createdAt" | "updatedAt">): IDemoRequest {
+  ensureLoaded();
   const newReq: IDemoRequest = {
     _id: "req-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
     ...data,
@@ -562,10 +632,12 @@ export function createDemoRequest(data: Omit<IDemoRequest, "_id" | "createdAt" |
     updatedAt: new Date().toISOString(),
   };
   DEMO_REQUESTS.unshift(newReq);
+  savePersistedData();
   return newReq;
 }
 
 export function updateDemoRequest(id: string, updates: Partial<IDemoRequest>): IDemoRequest | null {
+  ensureLoaded();
   const index = DEMO_REQUESTS.findIndex((r) => r._id === id);
   if (index === -1) return null;
   DEMO_REQUESTS[index] = {
@@ -573,12 +645,19 @@ export function updateDemoRequest(id: string, updates: Partial<IDemoRequest>): I
     ...updates,
     updatedAt: new Date().toISOString(),
   };
+  savePersistedData();
   return DEMO_REQUESTS[index];
 }
 
 export function deleteDemoRequest(id: string): boolean {
+  ensureLoaded();
   const index = DEMO_REQUESTS.findIndex((r) => r._id === id);
   if (index === -1) return false;
   DEMO_REQUESTS.splice(index, 1);
+  savePersistedData();
   return true;
 }
+
+// Initial load if file exists
+ensureLoaded();
+
