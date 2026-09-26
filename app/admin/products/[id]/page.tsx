@@ -39,9 +39,9 @@ export default function EditProductPage() {
 
   if (error || !product) {
     return (
-      <div className="p-8 text-center bg-white rounded-2xl border border-[#E8E2D9] max-w-md mx-auto my-12">
-        <h2 className="text-lg font-bold text-gray-900 mb-2">Product Not Found</h2>
-        <p className="text-xs text-gray-500">{error || "Unable to locate this product."}</p>
+      <div className="p-8 text-center bg-[var(--card)] rounded-2xl border border-[var(--border)] max-w-md mx-auto my-12">
+        <h2 className="text-lg font-bold text-white mb-2">Product Not Found</h2>
+        <p className="text-xs text-[var(--muted)]">{error || "Unable to locate this product."}</p>
       </div>
     );
   }

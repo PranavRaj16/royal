@@ -17,23 +17,29 @@ export async function GET() {
       createdAt: -1,
     });
 
-    // Compute product counts for each category
-    const productCounts = await Product.aggregate([
-      { $match: { businessId: categories[0]?.businessId } },
-      { $group: { _id: "$categoryId", count: { $sum: 1 } } },
-    ]);
+    if (categories.length > 0) {
+      // Compute product counts for each category
+      const productCounts = await Product.aggregate([
+        { $match: { businessId: categories[0]?.businessId } },
+        { $group: { _id: "$categoryId", count: { $sum: 1 } } },
+      ]);
 
-    const countMap = new Map(productCounts.map((p) => [p._id.toString(), p.count]));
+      const countMap = new Map(productCounts.map((p) => [p._id.toString(), p.count]));
 
-    const categoriesWithCount = categories.map((cat) => ({
-      ...cat.toObject(),
-      productCount: countMap.get(cat._id.toString()) || 0,
-    }));
+      const categoriesWithCount = categories.map((cat) => ({
+        ...cat.toObject(),
+        productCount: countMap.get(cat._id.toString()) || 0,
+      }));
 
-    return NextResponse.json({ success: true, categories: categoriesWithCount });
+      return NextResponse.json({ success: true, categories: categoriesWithCount });
+    }
+
+    const { DEMO_CATEGORIES } = await import("@/lib/demoData");
+    return NextResponse.json({ success: true, categories: DEMO_CATEGORIES, isFallback: true });
   } catch (error) {
-    console.error("GET /api/categories error:", error);
-    return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 });
+    console.error("GET /api/categories error (serving fallback):", error);
+    const { DEMO_CATEGORIES } = await import("@/lib/demoData");
+    return NextResponse.json({ success: true, categories: DEMO_CATEGORIES, isFallback: true });
   }
 }
 

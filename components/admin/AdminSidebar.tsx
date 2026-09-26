@@ -45,7 +45,6 @@ export default function AdminSidebar({
       label: "CATALOGUE",
       items: [
         { label: "Products", href: "/admin/products", icon: Package },
-        { label: "Categories", href: "/admin/categories", icon: FolderTree },
         { label: "Preview Store", href: `/store/${businessSlug}?preview=true`, icon: Eye, external: true },
         { label: "QR & Share", href: "/admin/qr-share", icon: QrCode },
       ],

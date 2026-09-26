@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
@@ -8,15 +14,16 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: "Catalogue Studio | Digital Catalogue Management Platform",
-  description: "Create, customize, and publish stunning digital catalogues for your business with instant WhatsApp enquiries.",
+  title: "Royal Jewellers | Luxury Jewellery Catalogue",
+  description:
+    "Explore our exquisite collection of handcrafted jewellery. Gold, diamonds, and gemstones crafted with timeless artistry.",
+  openGraph: {
+    title: "Royal Jewellers | Luxury Jewellery Catalogue",
+    description:
+      "Explore our exquisite collection of handcrafted jewellery. Gold, diamonds, and gemstones crafted with timeless artistry.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -25,8 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${jakarta.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+    <html
+      lang="en"
+      className={`${inter.variable} ${playfair.variable} h-full`}
+    >
+      <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
 }

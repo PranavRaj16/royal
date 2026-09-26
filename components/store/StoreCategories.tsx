@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { ICategory } from "@/types";
+import { getCategoryPlaceholder } from "@/lib/placeholderImages";
 
 interface StoreCategoriesProps {
   categories: ICategory[];
@@ -47,7 +48,7 @@ export default function StoreCategories({
                 {/* Background Image */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={cat.image || "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=600&q=80"}
+                  src={cat.image || getCategoryPlaceholder(cat.name || cat.slug)}
                   alt={cat.name}
                   className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition duration-700 ease-out"
                 />

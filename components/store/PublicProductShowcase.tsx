@@ -55,24 +55,46 @@ export default function PublicProductShowcase({
     // Search query
     if (search.trim()) {
       const q = search.toLowerCase().trim();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.sku.toLowerCase().includes(q) ||
+      result = result.filter((p) => {
+        const pCatName =
+          (typeof p.categoryId === "object" && p.categoryId !== null
+            ? (p.categoryId as { name?: string })?.name
+            : null) || p.category?.name;
+
+        return (
+          p.name?.toLowerCase().includes(q) ||
+          p.sku?.toLowerCase().includes(q) ||
           p.shortDescription?.toLowerCase().includes(q) ||
           p.tags?.some((t) => t.toLowerCase().includes(q)) ||
-          p.category?.name?.toLowerCase().includes(q)
-      );
+          pCatName?.toLowerCase().includes(q)
+        );
+      });
     }
 
     // Category filter
     if (selectedCategory !== "all") {
-      result = result.filter(
-        (p) =>
-          p.category?.slug === selectedCategory ||
-          p.categoryId === selectedCategory ||
-          p.category?._id === selectedCategory
+      const activeCat = categories.find(
+        (c) => c.slug === selectedCategory || c._id === selectedCategory
       );
+      result = result.filter((p) => {
+        const catObj =
+          typeof p.categoryId === "object" && p.categoryId !== null
+            ? (p.categoryId as { _id?: string; slug?: string; name?: string })
+            : (p.category as { _id?: string; slug?: string; name?: string } | undefined);
+        const catId = typeof p.categoryId === "string" ? p.categoryId : catObj?._id;
+        const catSlug = catObj?.slug;
+        const catName = catObj?.name?.toLowerCase();
+
+        if (catId === selectedCategory || catSlug === selectedCategory) return true;
+
+        if (activeCat) {
+          if (catId === activeCat._id) return true;
+          if (catSlug && activeCat.slug && catSlug === activeCat.slug) return true;
+          if (catName && activeCat.name && catName === activeCat.name.toLowerCase()) return true;
+        }
+
+        return false;
+      });
     }
 
     // Stock status

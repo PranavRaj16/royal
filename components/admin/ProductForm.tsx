@@ -1,24 +1,25 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
   Upload,
-  Plus,
   Trash2,
   Star,
   Loader2,
   Sparkles,
   Check,
-  Tag,
-  Sliders,
   Image as ImageIcon,
   DollarSign,
   Info,
+  X,
+  AlertCircle,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
-import { IProduct, ICategory, IProductImage, IProductSpecification } from "@/types";
+import { IProduct, ICategory, IProductImage } from "@/types";
 
 interface ProductFormProps {
   initialProduct?: IProduct;
@@ -27,124 +28,135 @@ interface ProductFormProps {
 
 export default function ProductForm({ initialProduct, isEditMode = false }: ProductFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryCatId = searchParams?.get("categoryId") || "";
 
-  // Basic Info
+  // Core Product Information
   const [name, setName] = useState(initialProduct?.name || "");
   const [slug, setSlug] = useState(initialProduct?.slug || "");
   const [sku, setSku] = useState(initialProduct?.sku || "");
-  const [categoryId, setCategoryId] = useState(initialProduct?.categoryId || "");
-  const [shortDescription, setShortDescription] = useState(initialProduct?.shortDescription || "");
-  const [description, setDescription] = useState(initialProduct?.description || "");
 
-  // Pricing
+  const initialCatId =
+    (typeof initialProduct?.categoryId === "object" && initialProduct?.categoryId !== null
+      ? (initialProduct.categoryId as { _id?: string })?._id || ""
+      : typeof initialProduct?.categoryId === "string"
+      ? initialProduct.categoryId
+      : "") || queryCatId;
+  const [categoryId, setCategoryId] = useState(initialCatId);
+  const [description, setDescription] = useState(initialProduct?.description || initialProduct?.shortDescription || "");
+
+  // Pricing & Stock
   const [price, setPrice] = useState<number | string>(initialProduct?.price ?? "");
   const [discountPrice, setDiscountPrice] = useState<number | string>(initialProduct?.discountPrice ?? "");
   const [showPrice, setShowPrice] = useState(initialProduct?.showPrice ?? true);
   const [stockStatus, setStockStatus] = useState<"in_stock" | "out_of_stock" | "made_to_order">(
     initialProduct?.stockStatus || "in_stock"
   );
+  const [quantity, setQuantity] = useState<number | string>(initialProduct?.quantity ?? 10);
 
   // Images
   const [images, setImages] = useState<IProductImage[]>(initialProduct?.images || []);
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Dynamic Specifications
-  const [specifications, setSpecifications] = useState<IProductSpecification[]>(
-    initialProduct?.specifications?.length
-      ? initialProduct.specifications
-      : [
-          { key: "Metal", value: "18K Gold" },
-          { key: "Gross Weight", value: "12.5g" },
-        ]
-  );
-
-  // Tags
-  const [tags, setTags] = useState<string[]>(initialProduct?.tags || []);
-  const [tagInput, setTagInput] = useState("");
-
-  // Visibility
+  // Promotion & Status
   const [isFeatured, setIsFeatured] = useState(initialProduct?.isFeatured || false);
   const [isPublished, setIsPublished] = useState(initialProduct?.isPublished ?? true);
 
-  // Categories list
+  // UI States
   const [categories, setCategories] = useState<ICategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  // Validation and Feedback States
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoadingCategories(true);
     fetch("/api/categories")
       .then((res) => res.json())
       .then((data) => {
-        if (data.categories) {
+        if (data.categories && data.categories.length > 0) {
           setCategories(data.categories);
-          if (!categoryId && data.categories.length > 0) {
-            setCategoryId(data.categories[0]._id);
+          if (!categoryId) {
+            const matched = queryCatId
+              ? data.categories.find((c: ICategory) => c._id === queryCatId || c.slug === queryCatId)
+              : null;
+            setCategoryId(matched ? matched._id : data.categories[0]._id);
           }
         }
       })
-      .catch((err) => console.error(err));
-  }, [categoryId]);
+      .catch((err) => console.error("Failed to load categories:", err))
+      .finally(() => setLoadingCategories(false));
+  }, [queryCatId, categoryId]);
 
-  // Handle SKU auto-generation if creating
   useEffect(() => {
-    if (!isEditMode && !sku && name) {
+    if (!sku) {
       const initials = name
-        .split(" ")
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 3);
-      setSku(`RJ-${initials}-${Date.now().toString().slice(-4)}`);
+        ? name
+            .split(" ")
+            .map((w: string) => w[0])
+            .filter(Boolean)
+            .join("")
+            .toUpperCase()
+            .slice(0, 3)
+        : "PRD";
+      setSku(`RJ-${initials || "PRD"}-${Date.now().toString().slice(-4)}`);
     }
-  }, [name, isEditMode, sku]);
+  }, [name, sku]);
 
-  // Image Upload Handler
+  const clearFieldError = (field: string) => {
+    if (fieldErrors[field]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+    if (errorMessage) setErrorMessage(null);
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
     setUploadingImage(true);
+    setErrorMessage(null);
     try {
       for (let i = 0; i < files.length; i++) {
         const formData = new FormData();
         formData.append("file", files[i]);
-
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch("/api/upload", { method: "POST", body: formData });
         const data = await res.json();
         if (res.ok && data.url) {
           setImages((prev) => [
             ...prev,
-            {
-              url: data.url,
-              alt: files[i].name,
-              isPrimary: prev.length === 0 && i === 0,
-              order: prev.length + i,
-            },
+            { url: data.url, alt: files[i].name, isPrimary: prev.length === 0 && i === 0, order: prev.length + i },
           ]);
         }
       }
     } catch (err) {
       console.error(err);
-      alert("Error uploading image");
+      setErrorMessage("Failed to upload image. You can also paste an image URL directly.");
     } finally {
       setUploadingImage(false);
     }
   };
 
   const addImageUrl = () => {
-    if (!imageUrlInput.trim()) return;
+    const trimmed = imageUrlInput.trim();
+    if (!trimmed) return;
+
+    if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://") && !trimmed.startsWith("/")) {
+      setFieldErrors((prev) => ({ ...prev, imageUrl: "Please enter a valid URL starting with https://" }));
+      return;
+    }
+
+    clearFieldError("imageUrl");
     setImages((prev) => [
       ...prev,
-      {
-        url: imageUrlInput.trim(),
-        alt: name || "Product image",
-        isPrimary: prev.length === 0,
-        order: prev.length,
-      },
+      { url: trimmed, alt: name || "Product image", isPrimary: prev.length === 0, order: prev.length },
     ]);
     setImageUrlInput("");
   };
@@ -160,536 +172,547 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
   };
 
   const setPrimaryImage = (index: number) => {
-    setImages((prev) =>
-      prev.map((img, i) => ({
-        ...img,
-        isPrimary: i === index,
-      }))
-    );
+    setImages((prev) => prev.map((img, i) => ({ ...img, isPrimary: i === index })));
   };
 
-  // Specifications Handlers
-  const addSpecification = () => {
-    setSpecifications([...specifications, { key: "", value: "" }]);
-  };
-
-  const updateSpecification = (index: number, field: "key" | "value", val: string) => {
-    const updated = [...specifications];
-    updated[index][field] = val;
-    setSpecifications(updated);
-  };
-
-  const removeSpecification = (index: number) => {
-    setSpecifications(specifications.filter((_, i) => i !== index));
-  };
-
-  // Tags Handlers
-  const addTag = (e: React.KeyboardEvent) => {
-    if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
-      e.preventDefault();
-      const cleaned = tagInput.trim().replace(/,/g, "");
-      if (!tags.includes(cleaned)) {
-        setTags([...tags, cleaned]);
-      }
-      setTagInput("");
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter((t) => t !== tagToRemove));
-  };
-
-  // Submit Handler
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
+  // Client-side comprehensive validation
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
 
     if (!name.trim()) {
-      setError("Product name is required.");
-      setSubmitting(false);
+      errors.name = "Product name is required.";
+    } else if (name.trim().length < 2) {
+      errors.name = "Product name must be at least 2 characters.";
+    }
+
+    const cleanCategoryId =
+      typeof categoryId === "object" && categoryId !== null
+        ? (categoryId as { _id?: string })?._id || ""
+        : categoryId;
+
+    if (!cleanCategoryId) {
+      errors.categoryId = "Please select a category.";
+    }
+
+    if (price === "" || price === undefined || price === null) {
+      errors.price = "Price is required.";
+    } else {
+      const numPrice = Number(price);
+      if (isNaN(numPrice) || numPrice <= 0) {
+        errors.price = "Price must be a valid positive number.";
+      }
+    }
+
+    if (discountPrice !== "" && discountPrice !== undefined && discountPrice !== null) {
+      const numDiscount = Number(discountPrice);
+      const numPrice = Number(price);
+      if (isNaN(numDiscount) || numDiscount <= 0) {
+        errors.discountPrice = "Discount price must be a valid positive number.";
+      } else if (!isNaN(numPrice) && numDiscount >= numPrice) {
+        errors.discountPrice = `Discount price (₹${numDiscount.toLocaleString()}) must be less than regular price (₹${numPrice.toLocaleString()}).`;
+      }
+    }
+
+    if (quantity === "" || quantity === undefined || quantity === null) {
+      errors.quantity = "Quantity is required.";
+    } else {
+      const numQty = Number(quantity);
+      if (isNaN(numQty) || numQty < 0 || !Number.isInteger(numQty)) {
+        errors.quantity = "Quantity must be a non-negative whole number.";
+      }
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
+      setErrorMessage(firstError);
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    if (!validateForm()) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    if (!categoryId) {
-      setError("Please select a category.");
-      setSubmitting(false);
-      return;
-    }
-    if (!price || isNaN(Number(price))) {
-      setError("Valid price is required.");
-      setSubmitting(false);
-      return;
-    }
+
+    setSubmitting(true);
+
+    const cleanCategoryId =
+      typeof categoryId === "object" && categoryId !== null
+        ? (categoryId as { _id?: string })?._id || ""
+        : categoryId;
 
     const payload = {
       name: name.trim(),
-      slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      sku: sku.trim() || `SKU-${Date.now().toString().slice(-4)}`,
-      categoryId,
-      shortDescription,
-      description,
+      slug: slug.trim() || name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-"),
+      sku: sku.trim() || `RJ-${Date.now().toString().slice(-6)}`,
+      categoryId: cleanCategoryId,
+      shortDescription: description.trim().slice(0, 150),
+      description: description.trim(),
       price: Number(price),
       discountPrice: discountPrice ? Number(discountPrice) : null,
       showPrice,
+      quantity: Number(quantity) || 0,
       stockStatus,
       images,
-      specifications: specifications.filter((s) => s.key.trim() && s.value.trim()),
-      tags,
+      specifications: initialProduct?.specifications || [],
+      tags: initialProduct?.tags || [],
       isFeatured,
       isPublished,
     };
 
     try {
       const url = isEditMode ? `/api/products/${initialProduct?._id}` : "/api/products";
-      const method = isEditMode ? "PUT" : "POST";
-
       const res = await fetch(url, {
-        method,
+        method: isEditMode ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       const data = await res.json();
+
       if (!res.ok) {
         throw new Error(data.error || "Failed to save product.");
       }
 
-      router.push("/admin/products");
-      router.refresh();
+      setSuccessMessage(isEditMode ? "Product updated successfully!" : "Product created successfully!");
+
+      setTimeout(() => {
+        router.push("/admin/products");
+        router.refresh();
+      }, 600);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save product.");
+      const msg = err instanceof Error ? err.message : "Failed to save product. Please try again.";
+      setErrorMessage(msg);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       setSubmitting(false);
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} className="space-y-8 max-w-5xl mx-auto pb-16">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/admin/products"
-            className="p-2 rounded-xl bg-white border border-[#E8E2D9] text-gray-600 hover:text-black transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-[#141414] tracking-tight">
-              {isEditMode ? "Edit Product" : "Add New Product"}
-            </h1>
-            <p className="text-xs text-[#666059]">
-              Configure product details, dynamic specifications, images, and pricing.
-            </p>
-          </div>
-        </div>
+  const getInputClass = (fieldName?: string) => {
+    const hasError = fieldName && fieldErrors[fieldName];
+    return `w-full px-3.5 py-2.5 bg-[var(--background)] border ${
+      hasError
+        ? "border-red-500/80 ring-2 ring-red-500/20 focus:border-red-500"
+        : "border-[var(--border)] focus:border-[#B4833E] focus:ring-2 focus:ring-[#B4833E]/20"
+    } rounded-xl text-sm text-white placeholder-[#666] focus:outline-none transition`;
+  };
 
+  const labelClass = "block text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5";
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6 pb-20 max-w-5xl mx-auto">
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <Link
             href="/admin/products"
-            className="px-4 py-2.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition"
+            className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-white transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <h1 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">
+              {isEditMode ? "Edit Product" : "Add Product"}
+            </h1>
+            <p className="text-xs text-[var(--muted)] mt-0.5">
+              Manage product images, details, category, quantity, and pricing
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin/products"
+            className="btn-ghost text-xs sm:text-sm px-4 py-2.5"
           >
             Cancel
           </Link>
           <button
+            id="save-product-btn"
             type="submit"
             disabled={submitting || uploadingImage}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-xs disabled:opacity-50"
+            className="btn-primary text-xs sm:text-sm flex items-center gap-2 px-6 py-2.5 shadow-lg disabled:opacity-50"
           >
             {submitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saving Product...</span>
+                <span>Saving…</span>
               </>
             ) : (
               <>
                 <Check className="w-4 h-4" />
-                <span>{isEditMode ? "Update Product" : "Publish to Catalogue"}</span>
+                <span>{isEditMode ? "Save Changes" : "Create Product"}</span>
               </>
             )}
           </button>
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-sm text-red-700">
-          {error}
+      {/* Global Validation Alert Banner */}
+      {errorMessage && (
+        <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/50 text-red-200 flex items-start gap-3 shadow-xl animate-in fade-in duration-300">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs sm:text-sm">
+            <span className="font-semibold text-white block mb-0.5">Validation Error</span>
+            <p className="text-red-300">{errorMessage}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            className="text-red-400 hover:text-white p-1 transition"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left 2 Columns: Basic Info, Specifications, Images */}
-        <div className="lg:col-span-2 space-y-8">
-          {/* Section 1: Basic Information */}
-          <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-5">
-            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Info className="w-4 h-4 text-[#B4833E]" />
-              Basic Information
+      {/* Global Success Alert Banner */}
+      {successMessage && (
+        <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-200 flex items-center gap-3 shadow-xl animate-in fade-in duration-300">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <div className="flex-1 text-xs sm:text-sm font-semibold text-white">
+            {successMessage} Redirecting to products catalogue...
+          </div>
+        </div>
+      )}
+
+      {/* 1. Image Upload Section */}
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-white flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-[#B4833E]" />
+              Product Images
             </h2>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                Product Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  if (!isEditMode) {
-                    setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
-                  }
-                }}
-                placeholder="e.g. Imperial Emerald & Solitaire Necklace"
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                  SKU / Product Code *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="RJ-NC-001"
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-mono focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                  Category *
-                </label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((c) => (
-                    <option key={c._id} value={c._id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                Short Summary (Card Preview)
-              </label>
-              <input
-                type="text"
-                value={shortDescription}
-                onChange={(e) => setShortDescription(e.target.value)}
-                placeholder="A breathtaking collar set with natural Zambian emeralds."
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                Full Description & Story
-              </label>
-              <textarea
-                rows={4}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the craftsmanship, origin of gemstones, certification, styling notes..."
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-              />
-            </div>
+            <p className="text-xs text-[var(--muted)] mt-0.5">
+              Upload product photos or paste image links. Click ★ to select the primary cover image.
+            </p>
           </div>
+          <span className="text-xs text-[var(--muted)] font-mono">
+            {images.length} {images.length === 1 ? "image" : "images"}
+          </span>
+        </div>
 
-          {/* Section 2: Dynamic Specifications */}
-          <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-                  <Sliders className="w-4 h-4 text-[#B4833E]" />
-                  Dynamic Specifications
-                </h2>
-                <p className="text-xs text-[#666059]">
-                  Add custom key-value pairs suitable for any business (Metal, Carats, Dimensions, Material, Storage, etc.).
-                </p>
-              </div>
+        {images.length === 0 && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-xs text-amber-300">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>No images uploaded yet. Add an image for the best showcase.</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+          {images.map((img, idx) => (
+            <div
+              key={idx}
+              className={`relative aspect-square rounded-xl overflow-hidden border-2 transition group ${
+                img.isPrimary ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/30" : "border-[var(--border)]"
+              }`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={img.url} alt={img.alt || "Product photo"} className="w-full h-full object-cover" />
               <button
                 type="button"
-                onClick={addSpecification}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#D9D2C7] text-xs font-semibold text-[#141414] hover:bg-[#F3EFEA] transition"
+                onClick={() => setPrimaryImage(idx)}
+                className={`absolute top-1.5 left-1.5 p-1 rounded-lg backdrop-blur-md transition ${
+                  img.isPrimary ? "bg-[#D4AF37] text-black font-bold" : "bg-black/60 text-white hover:bg-black"
+                }`}
+                title={img.isPrimary ? "Primary cover photo" : "Set as primary cover"}
               >
-                <Plus className="w-3.5 h-3.5 text-[#B4833E]" />
-                <span>Add Specification</span>
+                <Star className={`w-3.5 h-3.5 ${img.isPrimary ? "fill-black" : ""}`} />
               </button>
-            </div>
-
-            <div className="space-y-3">
-              {specifications.map((spec, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <input
-                    type="text"
-                    placeholder="e.g. Metal / RAM / Material"
-                    value={spec.key}
-                    onChange={(e) => updateSpecification(index, "key", e.target.value)}
-                    className="w-1/3 px-3 py-2 border border-[#D9D2C7] rounded-xl text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#B4833E]"
-                  />
-                  <input
-                    type="text"
-                    placeholder="e.g. 18K Yellow Gold / 16GB / Teak"
-                    value={spec.value}
-                    onChange={(e) => updateSpecification(index, "value", e.target.value)}
-                    className="flex-1 px-3 py-2 border border-[#D9D2C7] rounded-xl text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#B4833E]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeSpecification(index)}
-                    className="p-2 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              <button
+                type="button"
+                onClick={() => removeImage(idx)}
+                className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 text-white hover:bg-red-600 backdrop-blur-md transition"
+                title="Delete image"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+              {img.isPrimary && (
+                <div className="absolute bottom-0 inset-x-0 bg-[#D4AF37] text-black text-[9px] font-bold uppercase tracking-wider text-center py-0.5">
+                  Cover Photo
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          ))}
 
-          {/* Section 3: Product Images */}
-          <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
-            <div>
-              <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-[#B4833E]" />
-                Product Imagery
-              </h2>
-              <p className="text-xs text-[#666059]">
-                Upload multiple high-resolution photos. Star an image to designate it as the primary cover photo.
+          {/* Upload Button Box */}
+          <label className="aspect-square rounded-xl border-2 border-dashed border-[var(--border)] hover:border-[#B4833E] bg-[var(--surface-2)] flex flex-col items-center justify-center cursor-pointer transition p-3 text-center group">
+            {uploadingImage ? (
+              <Loader2 className="w-6 h-6 text-[#B4833E] animate-spin" />
+            ) : (
+              <>
+                <Upload className="w-6 h-6 text-[#B4833E] mb-1 group-hover:scale-110 transition" />
+                <span className="text-[11px] font-semibold text-white">Upload Image</span>
+                <span className="text-[9px] text-[var(--muted)] mt-0.5">PNG, JPG, WebP</span>
+              </>
+            )}
+            <input
+              id="image-upload"
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleFileUpload}
+              disabled={uploadingImage}
+              className="hidden"
+            />
+          </label>
+        </div>
+
+        {/* Paste URL */}
+        <div className="space-y-1">
+          <div className="flex gap-2">
+            <input
+              id="image-url-input"
+              type="text"
+              placeholder="Or paste direct image URL (https://...)"
+              value={imageUrlInput}
+              onChange={(e) => {
+                setImageUrlInput(e.target.value);
+                clearFieldError("imageUrl");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImageUrl())}
+              className={`${getInputClass("imageUrl")} flex-1 text-xs`}
+            />
+            <button
+              id="add-url-btn"
+              type="button"
+              onClick={addImageUrl}
+              className="px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--border)] text-white text-xs font-semibold rounded-xl border border-[var(--border)] hover:border-[#B4833E] transition whitespace-nowrap"
+            >
+              Add URL
+            </button>
+          </div>
+          {fieldErrors.imageUrl && (
+            <p className="text-[11px] text-red-400 flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {fieldErrors.imageUrl}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 2. Product Information (Name, Category, Description) */}
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+          <Info className="w-4 h-4 text-[#B4833E]" />
+          Product Information
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Product Name *</label>
+            <input
+              id="product-name"
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearFieldError("name");
+                if (!isEditMode) {
+                  setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+                }
+              }}
+              placeholder="e.g. Royal Emerald Pendant Necklace"
+              className={getInputClass("name")}
+            />
+            {fieldErrors.name && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {fieldErrors.name}
               </p>
-            </div>
+            )}
+          </div>
 
-            {/* Gallery Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {images.map((img, idx) => (
-                <div
-                  key={idx}
-                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition group ${
-                    img.isPrimary ? "border-[#B4833E] ring-2 ring-[#B4833E]/30" : "border-[#E8E2D9]"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.url} alt={img.alt || "Product"} className="w-full h-full object-cover" />
-
-                  {/* Star Badge */}
-                  <button
-                    type="button"
-                    onClick={() => setPrimaryImage(idx)}
-                    className={`absolute top-2 left-2 p-1 rounded-lg backdrop-blur-xs transition ${
-                      img.isPrimary
-                        ? "bg-[#B4833E] text-white"
-                        : "bg-black/50 text-white hover:bg-black/80"
-                    }`}
-                    title={img.isPrimary ? "Primary Image" : "Set as Primary"}
-                  >
-                    <Star className={`w-3.5 h-3.5 ${img.isPrimary ? "fill-white" : ""}`} />
-                  </button>
-
-                  {/* Remove button */}
-                  <button
-                    type="button"
-                    onClick={() => removeImage(idx)}
-                    className="absolute top-2 right-2 p-1 rounded-lg bg-black/50 text-white hover:bg-red-600 backdrop-blur-xs transition"
-                    title="Delete Image"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-
-                  {img.isPrimary && (
-                    <div className="absolute bottom-0 inset-x-0 bg-[#B4833E] text-white text-[10px] font-bold uppercase text-center py-0.5">
-                      Cover Photo
-                    </div>
-                  )}
-                </div>
+          <div>
+            <label className={labelClass}>Category *</label>
+            <select
+              id="product-category"
+              value={categoryId}
+              onChange={(e) => {
+                setCategoryId(e.target.value);
+                clearFieldError("categoryId");
+              }}
+              className={getInputClass("categoryId")}
+              disabled={loadingCategories}
+            >
+              <option value="">Select Category</option>
+              {categories.map((c) => (
+                <option key={c._id} value={c._id}>
+                  {c.name}
+                </option>
               ))}
-
-              {/* Upload Dropzone Tile */}
-              <label className="aspect-square rounded-xl border-2 border-dashed border-[#D9D2C7] hover:border-[#B4833E] bg-[#FAF8F5] flex flex-col items-center justify-center cursor-pointer transition p-4 text-center">
-                <Upload className="w-6 h-6 text-[#B4833E] mb-2" />
-                <span className="text-xs font-semibold text-gray-700">
-                  {uploadingImage ? "Uploading..." : "Upload Photos"}
-                </span>
-                <span className="text-[10px] text-gray-400 mt-1">PNG, JPG, WebP</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  disabled={uploadingImage}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            {/* Quick URL Input */}
-            <div className="flex gap-2 pt-2">
-              <input
-                type="text"
-                placeholder="Or paste external image URL (e.g. Unsplash, Cloudinary)..."
-                value={imageUrlInput}
-                onChange={(e) => setImageUrlInput(e.target.value)}
-                className="flex-1 px-3 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-              />
-              <button
-                type="button"
-                onClick={addImageUrl}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold rounded-xl transition"
-              >
-                Add URL
-              </button>
-            </div>
+            </select>
+            {fieldErrors.categoryId && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {fieldErrors.categoryId}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Right 1 Column: Pricing, Tags, Visibility */}
-        <div className="space-y-8">
-          {/* Pricing Card */}
-          <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
-            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-[#B4833E]" />
-              Pricing & Inventory
-            </h2>
+        <div>
+          <label className={labelClass}>Product Description</label>
+          <textarea
+            id="product-desc"
+            rows={3}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Describe the piece, craftsmanship, and design..."
+            className={`${getInputClass()} resize-none`}
+          />
+        </div>
+      </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                Regular Price (₹) *
-              </label>
-              <input
-                type="number"
-                required
-                min="0"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="125000"
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-              />
-            </div>
+      {/* 3. Pricing, Quantity & Stock */}
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-[#B4833E]" />
+          Pricing &amp; Inventory
+        </h2>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                Discount Price (₹) Optional
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={discountPrice}
-                onChange={(e) => setDiscountPrice(e.target.value)}
-                placeholder="115000"
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                Stock Status
-              </label>
-              <select
-                value={stockStatus}
-                onChange={(e) =>
-                  setStockStatus(e.target.value as "in_stock" | "out_of_stock" | "made_to_order")
-                }
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-medium text-gray-800 focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
-              >
-                <option value="in_stock">Available (In Stock)</option>
-                <option value="made_to_order">Made to Order / Bespoke</option>
-                <option value="out_of_stock">Out of Stock</option>
-              </select>
-            </div>
-
-            <div className="pt-2 border-t border-[#E8E2D9]">
-              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={showPrice}
-                  onChange={(e) => setShowPrice(e.target.checked)}
-                  className="w-4 h-4 text-[#B4833E] rounded border-gray-300 focus:ring-[#B4833E]"
-                />
-                <span>Show Price to Public Visitors</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-3">
-            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Tag className="w-4 h-4 text-[#B4833E]" />
-              Search Tags
-            </h2>
-            <p className="text-xs text-gray-500">Press enter or comma to append tag</p>
-
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div>
+            <label className={labelClass}>Price (₹) *</label>
             <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={addTag}
-              placeholder="Add tag (e.g. Bridal, Solitaire)..."
-              className="w-full px-3 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+              id="product-price"
+              type="number"
+              min="0"
+              step="any"
+              value={price}
+              onChange={(e) => {
+                setPrice(e.target.value);
+                clearFieldError("price");
+                clearFieldError("discountPrice");
+              }}
+              placeholder="125000"
+              className={`${getInputClass("price")} font-semibold`}
             />
-
-            <div className="flex flex-wrap gap-1.5 pt-2">
-              {tags.map((t) => (
-                <span
-                  key={t}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#FAF8F5] border border-[#E8E2D9] text-xs font-medium text-gray-700"
-                >
-                  <span>{t}</span>
-                  <button
-                    type="button"
-                    onClick={() => removeTag(t)}
-                    className="text-gray-400 hover:text-red-500"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
+            {fieldErrors.price && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {fieldErrors.price}
+              </p>
+            )}
           </div>
 
-          {/* Visibility & Curation */}
-          <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
-            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#B4833E]" />
-              Catalogue Visibility
-            </h2>
-
-            <div className="space-y-3">
-              <label className="flex items-center justify-between p-3 rounded-xl border border-[#E8E2D9] bg-[#FAF8F5] cursor-pointer">
-                <div>
-                  <span className="text-xs font-bold text-gray-900 block">Published</span>
-                  <span className="text-[11px] text-gray-500 block">Visible to public store visitors</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={isPublished}
-                  onChange={(e) => setIsPublished(e.target.checked)}
-                  className="w-4 h-4 text-[#B4833E] rounded border-gray-300 focus:ring-[#B4833E]"
-                />
-              </label>
-
-              <label className="flex items-center justify-between p-3 rounded-xl border border-[#E8E2D9] bg-[#FAF8F5] cursor-pointer">
-                <div>
-                  <span className="text-xs font-bold text-gray-900 block">Featured in Showcase</span>
-                  <span className="text-[11px] text-gray-500 block">Pinned on store homepage</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={isFeatured}
-                  onChange={(e) => setIsFeatured(e.target.checked)}
-                  className="w-4 h-4 text-[#B4833E] rounded border-gray-300 focus:ring-[#B4833E]"
-                />
-              </label>
-            </div>
+          <div>
+            <label className={labelClass}>Discount Price (₹)</label>
+            <input
+              id="product-discount-price"
+              type="number"
+              min="0"
+              step="any"
+              value={discountPrice}
+              onChange={(e) => {
+                setDiscountPrice(e.target.value);
+                clearFieldError("discountPrice");
+              }}
+              placeholder="Optional"
+              className={getInputClass("discountPrice")}
+            />
+            {fieldErrors.discountPrice && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {fieldErrors.discountPrice}
+              </p>
+            )}
           </div>
+
+          <div>
+            <label className={labelClass}>Quantity *</label>
+            <input
+              id="product-quantity"
+              type="number"
+              min="0"
+              value={quantity}
+              onChange={(e) => {
+                setQuantity(e.target.value);
+                clearFieldError("quantity");
+              }}
+              placeholder="10"
+              className={getInputClass("quantity")}
+            />
+            {fieldErrors.quantity && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {fieldErrors.quantity}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className={labelClass}>Stock Status</label>
+            <select
+              id="product-stock"
+              value={stockStatus}
+              onChange={(e) =>
+                setStockStatus(e.target.value as "in_stock" | "out_of_stock" | "made_to_order")
+              }
+              className={getInputClass()}
+            >
+              <option value="in_stock">In Stock</option>
+              <option value="made_to_order">Made to Order</option>
+              <option value="out_of_stock">Out of Stock</option>
+            </select>
+          </div>
+        </div>
+
+        <label className="flex items-center gap-3 pt-2 cursor-pointer">
+          <input
+            id="show-price-checkbox"
+            type="checkbox"
+            checked={showPrice}
+            onChange={(e) => setShowPrice(e.target.checked)}
+            className="w-4 h-4 rounded accent-[#D4AF37]"
+          />
+          <span className="text-xs text-white">Show price publicly in store</span>
+        </label>
+      </div>
+
+      {/* 4. Visibility & Status */}
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <h2 className="text-sm font-bold text-white flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#B4833E]" />
+          Store Visibility
+        </h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] cursor-pointer hover:border-[#B4833E]/50 transition">
+            <div>
+              <span className="text-xs font-bold text-white block">Published</span>
+              <span className="text-[11px] text-[var(--muted)] block">Live and visible in catalogue</span>
+            </div>
+            <input
+              id="is-published-checkbox"
+              type="checkbox"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#D4AF37]"
+            />
+          </label>
+
+          <label className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] cursor-pointer hover:border-[#B4833E]/50 transition">
+            <div>
+              <span className="text-xs font-bold text-white block">Featured Piece</span>
+              <span className="text-[11px] text-[var(--muted)] block">Highlight on store home page</span>
+            </div>
+            <input
+              id="is-featured-checkbox"
+              type="checkbox"
+              checked={isFeatured}
+              onChange={(e) => setIsFeatured(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#D4AF37]"
+            />
+          </label>
         </div>
       </div>
     </form>

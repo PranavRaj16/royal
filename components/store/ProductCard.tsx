@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Star, ArrowRight, MessageCircle } from "lucide-react";
 import { IProduct } from "@/types";
+import { getProductPlaceholder } from "@/lib/placeholderImages";
 
 interface ProductCardProps {
   product: IProduct;
@@ -23,10 +24,17 @@ export default function ProductCard({
   whatsappNumber,
   businessName,
 }: ProductCardProps) {
+  const catIdentifier =
+    (typeof product.categoryId === "object" && product.categoryId !== null
+      ? (product.categoryId as { name?: string; slug?: string })?.name || (product.categoryId as { name?: string; slug?: string })?.slug
+      : typeof product.categoryId === "string"
+      ? product.categoryId
+      : "") || product.category?.name || "";
+
   const primaryImage =
     product.images?.find((img) => img.isPrimary)?.url ||
     product.images?.[0]?.url ||
-    "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=600&q=80";
+    getProductPlaceholder(catIdentifier, product.name);
 
   // Calculate discount percent
   const discountPercent =
@@ -94,7 +102,11 @@ export default function ProductCard({
       <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#B4833E] block mb-1">
-            {product.category?.name || "Bespoke Collection"}
+            {(typeof product.categoryId === "object" && product.categoryId !== null
+              ? (product.categoryId as { name?: string })?.name
+              : null) ||
+              product.category?.name ||
+              "Bespoke Collection"}
           </span>
           <Link
             href={productPath}

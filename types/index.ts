@@ -99,7 +99,7 @@ export interface IProductSpecification {
 export interface IProduct {
   _id: string;
   businessId: string;
-  categoryId: string;
+  categoryId: string | { _id: string; name: string; slug: string };
   category?: ICategory;
   name: string;
   slug: string;
@@ -109,6 +109,7 @@ export interface IProduct {
   price: number;
   discountPrice?: number;
   showPrice: boolean;
+  quantity?: number;
   stockStatus: StockStatus;
   images: IProductImage[];
   specifications: IProductSpecification[];

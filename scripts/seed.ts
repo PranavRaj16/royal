@@ -1,6 +1,39 @@
+import fs from "fs";
+import path from "path";
+import dns from "node:dns";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import { Admin, Business, Category, Product } from "../models";
+
+// Configure public DNS to avoid querySrv ECONNREFUSED on Windows / ISP DNS
+try {
+  dns.setServers(["8.8.8.8", "8.8.4.4", "1.1.1.1"]);
+} catch {
+  // Ignore if not supported
+}
+
+// Load .env.local if present
+try {
+  const envPath = path.resolve(process.cwd(), ".env.local");
+  if (fs.existsSync(envPath)) {
+    const envContent = fs.readFileSync(envPath, "utf-8");
+    for (const line of envContent.split("\n")) {
+      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+      if (match) {
+        const key = match[1];
+        let val = (match[2] || "").trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        if (!process.env[key]) {
+          process.env[key] = val;
+        }
+      }
+    }
+  }
+} catch {
+  // ignore
+}
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/royal_catalogue";
 

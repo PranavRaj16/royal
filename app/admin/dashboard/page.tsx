@@ -4,455 +4,349 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Package,
-  FolderTree,
-  CheckCircle2,
-  FileEdit,
-  ArrowUpRight,
+  Tag,
+  LayoutDashboard,
   Plus,
+  ArrowRight,
+  TrendingUp,
   Eye,
-  Globe,
-  Sparkles,
-  Loader2,
-  Calendar,
-  AlertCircle,
-  ExternalLink,
+  CheckCircle2,
+  Clock,
 } from "lucide-react";
-import { IProduct, IBusiness, DashboardStats } from "@/types";
+import { IProduct, ICategory } from "@/types";
+import { getProductPlaceholder } from "@/lib/placeholderImages";
 
-export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+interface Stats {
+  totalProducts: number;
+  publishedProducts: number;
+  draftProducts: number;
+  featuredProducts: number;
+  totalCategories: number;
+}
+
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<Stats | null>(null);
   const [recentProducts, setRecentProducts] = useState<IProduct[]>([]);
-  const [featuredProducts, setFeaturedProducts] = useState<IProduct[]>([]);
-  const [business, setBusiness] = useState<IBusiness | null>(null);
+  const [categories, setCategories] = useState<ICategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [togglingStatus, setTogglingStatus] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-
-  const fetchDashboardData = async () => {
-    try {
-      const res = await fetch("/api/dashboard/stats");
-      const data = await res.json();
-      if (res.ok) {
-        setStats(data.stats);
-        setRecentProducts(data.recentProducts || []);
-        setFeaturedProducts(data.featuredProducts || []);
-        setBusiness(data.business);
-      }
-    } catch (err) {
-      console.error("Failed to load dashboard data:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    fetchDashboardData();
+    Promise.all([
+      fetch("/api/products?sort=newest").then((r) => r.json()),
+      fetch("/api/categories").then((r) => r.json()),
+    ])
+      .then(([productsData, catsData]) => {
+        const products: IProduct[] = productsData.products || [];
+        const cats: ICategory[] = catsData.categories || [];
+        setCategories(cats);
+        setRecentProducts(products.slice(0, 5));
+        setStats({
+          totalProducts: products.length,
+          publishedProducts: products.filter((p) => p.isPublished).length,
+          draftProducts: products.filter((p) => !p.isPublished).length,
+          featuredProducts: products.filter((p) => p.isFeatured).length,
+          totalCategories: cats.length,
+        });
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const handleToggleCatalogueStatus = async () => {
-    if (!business) return;
-    const newStatus = business.catalogueStatus === "published" ? "unpublished" : "published";
-    setTogglingStatus(true);
-    setStatusMessage(null);
-
-    try {
-      const res = await fetch("/api/business", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catalogueStatus: newStatus }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setBusiness(data.business);
-        if (stats) {
-          setStats({ ...stats, catalogueStatus: newStatus });
-        }
-        setStatusMessage(
-          newStatus === "published"
-            ? "Catalogue is now LIVE to public visitors!"
-            : "Catalogue is now UNPUBLISHED (Visitors see 'Coming Soon')."
-        );
-        setTimeout(() => setStatusMessage(null), 4000);
-      }
-    } catch (err) {
-      console.error("Error toggling catalogue status:", err);
-    } finally {
-      setTogglingStatus(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
-        <span className="text-sm text-gray-500 font-medium">Loading studio metrics...</span>
-      </div>
-    );
-  }
-
-  const isLive = business?.catalogueStatus === "published";
+  const statCards = [
+    {
+      id: "stat-total",
+      label: "Total Products",
+      value: stats?.totalProducts ?? "—",
+      icon: Package,
+      color: "#B4833E",
+      href: "/admin/products",
+    },
+    {
+      id: "stat-published",
+      label: "Published",
+      value: stats?.publishedProducts ?? "—",
+      icon: Eye,
+      color: "#22c55e",
+      href: "/admin/products?status=published",
+    },
+    {
+      id: "stat-draft",
+      label: "Drafts",
+      value: stats?.draftProducts ?? "—",
+      icon: Clock,
+      color: "#f59e0b",
+      href: "/admin/products?status=draft",
+    },
+    {
+      id: "stat-categories",
+      label: "Categories",
+      value: stats?.totalCategories ?? "—",
+      icon: Tag,
+      color: "#8b5cf6",
+      href: "/admin/products",
+    },
+  ];
 
   return (
     <div className="space-y-8">
-      {/* Top Banner / Status Hero */}
-      <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#B4833E]">
-                Business Control Center
-              </span>
-              <span className="text-gray-300">•</span>
-              <span className="text-xs text-gray-500 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5" />
-                Updated: {stats?.lastUpdated ? new Date(stats.lastUpdated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Today"}
-              </span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-[#141414] tracking-tight">
-              {business?.name || "Royal Jewellers"}
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <LayoutDashboard className="w-5 h-5 text-[#B4833E]" />
+            <h1 className="font-serif text-2xl font-bold text-white">
+              Dashboard
             </h1>
-            <p className="text-sm text-[#666059] mt-1 max-w-xl">
-              Manage your showcase, upload high-resolution product photography, configure dynamic specifications, and publish instantly.
-            </p>
           </div>
-
-          {/* Quick Actions & Status Toggle */}
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleToggleCatalogueStatus}
-              disabled={togglingStatus}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold border transition ${
-                isLive
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                  : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
-              }`}
-            >
-              <span
-                className={`w-2.5 h-2.5 rounded-full ${
-                  isLive ? "bg-emerald-600 animate-ping" : "bg-amber-600"
-                }`}
-              />
-              <span>{isLive ? "Catalogue: Published" : "Catalogue: Unpublished"}</span>
-              <span className="text-[10px] underline ml-1">
-                {togglingStatus ? "Updating..." : "(Click to Switch)"}
-              </span>
-            </button>
-
-            <Link
-              href={`/store/${business?.slug}?preview=true`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-[#D9D2C7] text-xs font-semibold text-[#141414] hover:bg-[#F3EFEA] transition shadow-xs"
-            >
-              <Eye className="w-4 h-4 text-[#B4833E]" />
-              <span>Preview</span>
-            </Link>
-
-            <Link
-              href={`/store/${business?.slug}`}
-              target="_blank"
-              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-xs"
-            >
-              <Globe className="w-4 h-4 text-[#D4AF37]" />
-              <span>View Live Store</span>
-              <ExternalLink className="w-3 h-3 text-gray-400" />
-            </Link>
-          </div>
+          <p className="text-sm text-[var(--muted)]">
+            Welcome back. Here&apos;s an overview of your catalogue.
+          </p>
         </div>
-
-        {statusMessage && (
-          <div className="mt-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{statusMessage}</span>
-          </div>
-        )}
+        <Link
+          id="add-product-btn"
+          href="/admin/products/new"
+          className="btn-primary self-start sm:self-auto"
+        >
+          <Plus className="w-4 h-4" />
+          Add Product
+        </Link>
       </div>
 
-      {/* 4 Primary Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-[#B4833E] mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-              Total Products
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center">
-              <Package className="w-4 h-4 text-[#B4833E]" />
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-[#141414]">{stats?.totalProducts ?? 0}</div>
-          <p className="text-xs text-gray-400 mt-1">Across all categories</p>
-        </div>
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Link
+              key={card.id}
+              id={card.id}
+              href={card.href}
+              className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 hover:border-[#B4833E]/40 transition product-card group"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: `${card.color}20` }}
+                >
+                  <Icon className="w-5 h-5" style={{ color: card.color }} />
+                </div>
+                <ArrowRight
+                  className="w-4 h-4 text-[var(--muted)] opacity-0 group-hover:opacity-100 transition"
+                />
+              </div>
+              {loading ? (
+                <div className="h-8 w-12 bg-[var(--surface-2)] rounded animate-pulse mb-1" />
+              ) : (
+                <span className="block text-3xl font-bold text-white mb-1">
+                  {card.value}
+                </span>
+              )}
+              <span className="text-xs font-semibold text-[var(--muted)] uppercase tracking-wider">
+                {card.label}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
 
-        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-emerald-600 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-              Published
-            </span>
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
+      {/* Quick actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Link
+          id="quick-add-product-btn"
+          href="/admin/products/new"
+          className="glass border border-[var(--border)] rounded-2xl p-5 flex items-center gap-4 hover:border-[#B4833E]/50 transition group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-[#B4833E]/15 border border-[#B4833E]/30 flex items-center justify-center shrink-0">
+            <Plus className="w-5 h-5 text-[#B4833E]" />
           </div>
-          <div className="text-3xl font-bold text-[#141414]">{stats?.publishedProducts ?? 0}</div>
-          <p className="text-xs text-gray-400 mt-1">Visible to customers</p>
-        </div>
-
-        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-amber-600 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
-              Drafts
+          <div>
+            <span className="block font-bold text-white text-sm">
+              Add New Product
             </span>
-            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
-              <FileEdit className="w-4 h-4 text-amber-600" />
-            </div>
+            <span className="text-xs text-[var(--muted)]">
+              Upload images &amp; set details
+            </span>
           </div>
-          <div className="text-3xl font-bold text-[#141414]">{stats?.draftProducts ?? 0}</div>
-          <p className="text-xs text-gray-400 mt-1">Unpublished items</p>
-        </div>
+          <ArrowRight className="w-4 h-4 text-[var(--muted)] ml-auto opacity-0 group-hover:opacity-100 transition" />
+        </Link>
 
-        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-5 shadow-xs">
-          <div className="flex items-center justify-between text-indigo-600 mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">
+        <Link
+          id="quick-manage-products-btn"
+          href="/admin/products"
+          className="glass border border-[var(--border)] rounded-2xl p-5 flex items-center gap-4 hover:border-[#B4833E]/50 transition group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-[#8b5cf6]/15 border border-[#8b5cf6]/30 flex items-center justify-center shrink-0">
+            <TrendingUp className="w-5 h-5 text-[#8b5cf6]" />
+          </div>
+          <div>
+            <span className="block font-bold text-white text-sm">
+              Manage Products
+            </span>
+            <span className="text-xs text-[var(--muted)]">
+              Edit, publish, or delete
+            </span>
+          </div>
+          <ArrowRight className="w-4 h-4 text-[var(--muted)] ml-auto opacity-0 group-hover:opacity-100 transition" />
+        </Link>
+
+        <Link
+          id="quick-categories-btn"
+          href="/admin/products"
+          className="glass border border-[var(--border)] rounded-2xl p-5 flex items-center gap-4 hover:border-[#B4833E]/50 transition group"
+        >
+          <div className="w-12 h-12 rounded-xl bg-[#22c55e]/15 border border-[#22c55e]/30 flex items-center justify-center shrink-0">
+            <Tag className="w-5 h-5 text-[#22c55e]" />
+          </div>
+          <div>
+            <span className="block font-bold text-white text-sm">
               Categories
             </span>
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
-              <FolderTree className="w-4 h-4 text-indigo-600" />
-            </div>
+            <span className="text-xs text-[var(--muted)]">
+              Organise your catalogue
+            </span>
           </div>
-          <div className="text-3xl font-bold text-[#141414]">{stats?.totalCategories ?? 0}</div>
-          <p className="text-xs text-gray-400 mt-1">Active taxonomy groups</p>
-        </div>
+          <ArrowRight className="w-4 h-4 text-[var(--muted)] ml-auto opacity-0 group-hover:opacity-100 transition" />
+        </Link>
       </div>
 
-      {/* Onboarding Checklist Widget */}
-      <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#B4833E]" />
-              Catalogue Launch Checklist
-            </h2>
-            <p className="text-xs text-[#666059]">Follow these steps to customize and expand your business catalogue</p>
+      {/* Recent products + categories */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent products */}
+        <div className="lg:col-span-2 bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <span className="font-bold text-white text-sm">Recent Products</span>
+            <Link
+              href="/admin/products"
+              className="text-xs font-semibold text-[#B4833E] hover:text-[#D4AF37] transition"
+            >
+              View All →
+            </Link>
           </div>
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
-            5 of 6 Steps Ready
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <Link
-            href="/admin/business"
-            className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition flex flex-col items-start"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 mb-2" />
-            <span className="text-xs font-bold text-gray-900">1. Business Profile</span>
-            <span className="text-[10px] text-gray-500">Contact & Info</span>
-          </Link>
-
-          <Link
-            href="/admin/categories"
-            className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition flex flex-col items-start"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 mb-2" />
-            <span className="text-xs font-bold text-gray-900">2. Categories</span>
-            <span className="text-[10px] text-gray-500">{stats?.totalCategories} Created</span>
-          </Link>
-
-          <Link
-            href="/admin/products"
-            className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition flex flex-col items-start"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 mb-2" />
-            <span className="text-xs font-bold text-gray-900">3. Products</span>
-            <span className="text-[10px] text-gray-500">{stats?.totalProducts} Items</span>
-          </Link>
-
-          <Link
-            href="/admin/appearance"
-            className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition flex flex-col items-start"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 mb-2" />
-            <span className="text-xs font-bold text-gray-900">4. Appearance</span>
-            <span className="text-[10px] text-gray-500">Luxury Theme</span>
-          </Link>
-
-          <Link
-            href={`/store/${business?.slug}?preview=true`}
-            target="_blank"
-            className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 transition flex flex-col items-start"
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 mb-2" />
-            <span className="text-xs font-bold text-gray-900">5. Preview</span>
-            <span className="text-[10px] text-gray-500">Tested Live</span>
-          </Link>
-
-          <Link
-            href="/admin/qr-share"
-            className="p-3 rounded-xl border border-[#D9D2C7] bg-[#FAF8F5] hover:bg-[#F3EFEA] transition flex flex-col items-start"
-          >
-            <ArrowUpRight className="w-4 h-4 text-[#B4833E] mb-2" />
-            <span className="text-xs font-bold text-gray-900">6. Share QR</span>
-            <span className="text-[10px] text-gray-500">Display QR Stand</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* Main Content Grid: Recent Products & Featured Products */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recently Added Products (2 Columns) */}
-        <div className="lg:col-span-2 bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h2 className="text-lg font-bold text-[#141414]">Recently Added Products</h2>
-              <p className="text-xs text-[#666059]">Latest items in your catalogue inventory</p>
+          {loading ? (
+            <div className="p-5 space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 animate-pulse">
+                  <div className="w-10 h-10 bg-[var(--surface-2)] rounded-xl shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 bg-[var(--surface-2)] rounded w-3/4" />
+                    <div className="h-2.5 bg-[var(--surface-2)] rounded w-1/2" />
+                  </div>
+                  <div className="h-3 bg-[var(--surface-2)] rounded w-16" />
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-2">
+          ) : recentProducts.length === 0 ? (
+            <div className="py-12 text-center">
+              <Package className="w-10 h-10 text-[var(--border)] mx-auto mb-3" />
+              <p className="text-sm text-[var(--muted)]">No products yet.</p>
               <Link
                 href="/admin/products/new"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-xs"
+                className="text-xs font-semibold text-[#B4833E] hover:text-[#D4AF37] mt-2 inline-block"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Product</span>
-              </Link>
-              <Link
-                href="/admin/products"
-                className="text-xs font-semibold text-[#B4833E] hover:underline"
-              >
-                View all
-              </Link>
-            </div>
-          </div>
-
-          {recentProducts.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-[#E8E2D9] rounded-xl">
-              <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-gray-700">No products added yet</p>
-              <Link
-                href="/admin/products/new"
-                className="inline-block mt-3 text-xs font-semibold text-[#B4833E] hover:underline"
-              >
-                Add your first product
+                Add your first product →
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-[#E8E2D9] text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                    <th className="pb-3">Product</th>
-                    <th className="pb-3">SKU</th>
-                    <th className="pb-3">Price</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E8E2D9]">
-                  {recentProducts.map((p) => (
-                    <tr key={p._id} className="hover:bg-[#FAF8F5] transition">
-                      <td className="py-3.5 pr-3">
-                        <div className="flex items-center gap-3">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={p.images?.[0]?.url || "/placeholder.jpg"}
-                            alt={p.name}
-                            className="w-10 h-10 rounded-lg object-cover bg-gray-100 border border-[#E8E2D9]"
-                          />
-                          <div className="max-w-[200px]">
-                            <span className="font-semibold text-gray-900 block truncate">{p.name}</span>
-                            <span className="text-[11px] text-gray-500 block truncate">
-                              {p.category?.name || "General"}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-3 font-mono text-xs text-gray-600">{p.sku}</td>
-                      <td className="py-3.5 px-3 font-medium text-gray-900">
+            <div className="divide-y divide-[var(--border)]">
+              {recentProducts.map((p) => {
+                const cat =
+                  (p.categoryId as unknown as { name: string })?.name || "";
+                const img =
+                  p.images?.find((i) => i.isPrimary)?.url ||
+                  p.images?.[0]?.url ||
+                  getProductPlaceholder(cat, p.name);
+                return (
+                  <Link
+                    key={p._id}
+                    href={`/admin/products/${p._id}`}
+                    id={`recent-${p._id}`}
+                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-[var(--surface-2)] transition"
+                  >
+                    <div className="w-10 h-10 shrink-0 rounded-xl overflow-hidden bg-[var(--surface-2)] border border-[#2b2b2b]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="block font-semibold text-white text-sm truncate">
+                        {p.name}
+                      </span>
+                      <span className="block text-xs text-[var(--muted)] truncate">
+                        {cat || "Uncategorized"} • SKU: {p.sku}
+                      </span>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="block text-sm font-bold text-white">
                         ₹{p.price.toLocaleString("en-IN")}
-                      </td>
-                      <td className="py-3.5 px-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                            p.isPublished
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
-                          }`}
-                        >
-                          {p.isPublished ? "Published" : "Draft"}
-                        </span>
-                      </td>
-                      <td className="py-3.5 pl-3 text-right">
-                        <Link
-                          href={`/admin/products/${p._id}`}
-                          className="text-xs font-semibold text-[#B4833E] hover:underline"
-                        >
-                          Edit
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold ${
+                          p.isPublished
+                            ? "text-green-400"
+                            : "text-amber-400"
+                        }`}
+                      >
+                        {p.isPublished ? "Published" : "Draft"}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Featured Showcase List (1 Column) */}
-        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-[#141414]">Featured Showcase</h2>
-                <p className="text-xs text-[#666059]">Highlighted on your store hero & grid</p>
-              </div>
-              <Sparkles className="w-5 h-5 text-[#D4AF37]" />
-            </div>
-
-            <div className="space-y-3">
-              {featuredProducts.length === 0 ? (
-                <div className="text-center py-8 text-xs text-gray-500">
-                  <AlertCircle className="w-6 h-6 text-gray-300 mx-auto mb-1" />
-                  No products marked as featured yet.
-                </div>
-              ) : (
-                featuredProducts.map((p) => (
-                  <div
-                    key={p._id}
-                    className="p-3 rounded-xl border border-[#E8E2D9] bg-[#FAF8F5] flex items-center justify-between gap-3 hover:border-[#B4833E] transition"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={p.images?.[0]?.url || "/placeholder.jpg"}
-                        alt={p.name}
-                        className="w-9 h-9 rounded-lg object-cover bg-gray-100 border border-[#E8E2D9]"
-                      />
-                      <div className="min-w-0">
-                        <span className="text-xs font-bold text-gray-900 block truncate">{p.name}</span>
-                        <span className="text-[11px] text-[#B4833E] font-medium">
-                          ₹{p.price.toLocaleString("en-IN")}
-                        </span>
-                      </div>
-                    </div>
-                    <Link
-                      href={`/admin/products/${p._id}`}
-                      className="text-xs font-semibold text-gray-500 hover:text-black shrink-0"
-                    >
-                      Edit
-                    </Link>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="pt-6 mt-6 border-t border-[#E8E2D9]">
+        {/* Categories panel */}
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
+            <span className="font-bold text-white text-sm">Collections</span>
             <Link
-              href="/admin/products?featured=true"
-              className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[#FAF8F5] border border-[#D9D2C7] text-xs font-semibold text-gray-700 hover:bg-[#F3EFEA] hover:text-[#141414] transition"
+              href="/admin/products"
+              className="text-xs font-semibold text-[#B4833E] hover:text-[#D4AF37] transition"
             >
-              <span>Manage Featured Products</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              View Folders →
             </Link>
           </div>
+          {loading ? (
+            <div className="p-5 space-y-3">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-8 bg-[var(--surface-2)] rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : categories.length === 0 ? (
+            <div className="py-12 text-center">
+              <Tag className="w-10 h-10 text-[var(--border)] mx-auto mb-3" />
+              <p className="text-sm text-[var(--muted)]">No categories yet.</p>
+              <Link
+                href="/admin/categories"
+                className="text-xs font-semibold text-[#B4833E] mt-2 inline-block"
+              >
+                Create category →
+              </Link>
+            </div>
+          ) : (
+            <div className="p-3 space-y-1">
+              {categories.map((cat) => (
+                <Link
+                  key={cat._id}
+                  href={`/admin/products?category=${cat._id}`}
+                  id={`cat-dash-${cat._id}`}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-[var(--surface-2)] transition"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#B4833E]" />
+                    <span className="text-sm font-semibold text-white">
+                      {cat.name}
+                    </span>
+                  </div>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
