@@ -18,16 +18,16 @@ export default function StoreCategories({
   if (!categories || categories.length === 0) return null;
 
   return (
-    <section id="categories" className="py-20 bg-[#FAF8F5]">
+    <section id="categories" className="py-20 bg-[#FFF8FB] dark:bg-[#121212] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-14">
-          <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B4833E] block mb-2">
+          <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B81862] dark:text-[#d43d8a] block mb-2">
             Curated Collections
           </span>
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141414] tracking-tight">
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141414] dark:text-[#f5f5f5] tracking-tight">
             Discover By Category
           </h2>
-          <p className="mt-3 text-sm text-[#666059]">
+          <p className="mt-3 text-sm text-[#666059] dark:text-[#a0a0a0]">
             Select an aesthetic realm to filter our master-crafted adornments.
           </p>
         </div>
@@ -42,7 +42,7 @@ export default function StoreCategories({
                 key={cat._id}
                 href={`/store/${businessSlug}?category=${cat.slug}#products`}
                 className={`group relative rounded-2xl overflow-hidden aspect-[4/5] shadow-xs hover:shadow-xl transition-all duration-500 flex flex-col justify-end p-5 ${
-                  isSelected ? "ring-3 ring-[#B4833E]" : ""
+                  isSelected ? "ring-3 ring-[#B81862]" : ""
                 }`}
               >
                 {/* Background Image */}
@@ -58,7 +58,7 @@ export default function StoreCategories({
 
                 {/* Card Content */}
                 <div className="relative z-10">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] block mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#d43d8a] block mb-1">
                     Collection
                   </span>
                   <h3 className="font-serif text-lg sm:text-xl font-bold text-white leading-snug drop-shadow-sm">
@@ -69,7 +69,7 @@ export default function StoreCategories({
                       {cat.description}
                     </p>
                   )}
-                  <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#D4AF37] group-hover:translate-x-1 transition duration-300">
+                  <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-[#d43d8a] group-hover:translate-x-1 transition duration-300">
                     <span>Explore Pieces</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </div>

@@ -11,7 +11,7 @@ export interface CategoryPlaceholderPair {
 export const CATEGORY_PLACEHOLDERS: Record<string, CategoryPlaceholderPair> = {
   bridal: {
     categoryCover: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1200&q=80",
-    productPlaceholder: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1000&q=80",
+    productPlaceholder: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1000&q=80",
   },
   diamond: {
     categoryCover: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1200&q=80",
@@ -46,15 +46,15 @@ export const CATEGORY_PLACEHOLDERS: Record<string, CategoryPlaceholderPair> = {
     productPlaceholder: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1000&q=80",
   },
   bracelet: {
-    categoryCover: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+    categoryCover: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
     productPlaceholder: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1000&q=80",
   },
   bracelets: {
-    categoryCover: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+    categoryCover: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
     productPlaceholder: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1000&q=80",
   },
   bangles: {
-    categoryCover: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+    categoryCover: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
     productPlaceholder: "https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1000&q=80",
   },
   pendant: {

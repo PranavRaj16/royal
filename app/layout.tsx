@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -15,11 +16,11 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Royal Jewellers | Luxury Jewellery Catalogue",
+  title: "Dwara Collections | Luxury Jewellery Catalogue",
   description:
     "Explore our exquisite collection of handcrafted jewellery. Gold, diamonds, and gemstones crafted with timeless artistry.",
   openGraph: {
-    title: "Royal Jewellers | Luxury Jewellery Catalogue",
+    title: "Dwara Collections | Luxury Jewellery Catalogue",
     description:
       "Explore our exquisite collection of handcrafted jewellery. Gold, diamonds, and gemstones crafted with timeless artistry.",
     type: "website",
@@ -36,7 +37,9 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${playfair.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }

@@ -386,8 +386,8 @@ function ProductsContent() {
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#1e1e1e] border border-[#D4AF37] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-bottom-5">
-          <CheckCircle2 className="w-4 h-4 text-[#D4AF37]" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[#1e1e1e] border border-[#d43d8a] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4 text-[#d43d8a]" />
           <span>{toastMsg}</span>
         </div>
       )}
@@ -399,7 +399,7 @@ function ProductsContent() {
         <div>
           <div className="flex items-center gap-2 text-xs text-[var(--muted)] mb-1">
             <span className="flex items-center gap-1 font-medium">
-              <Package className="w-3.5 h-3.5 text-[#B4833E]" />
+              <Package className="w-3.5 h-3.5 text-[#B81862]" />
               Catalogue Management
             </span>
             {selectedFolderId && (
@@ -408,18 +408,18 @@ function ProductsContent() {
                 <button
                   type="button"
                   onClick={() => setParam("category", null)}
-                  className="hover:text-white transition cursor-pointer"
+                  className="hover:text-[var(--foreground)] transition cursor-pointer"
                 >
                   Collections
                 </button>
                 <ChevronRight className="w-3 h-3 text-[var(--muted)]" />
-                <span className="text-[#D4AF37] font-semibold">
+                <span className="text-[#d43d8a] font-semibold">
                   {currentCategory ? currentCategory.name : selectedFolderId === "all" ? "All Pieces" : "Uncategorized"}
                 </span>
               </>
             )}
           </div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-white tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[var(--foreground)] tracking-tight">
             {selectedFolderId
               ? currentCategory
                 ? currentCategory.name
@@ -443,9 +443,9 @@ function ProductsContent() {
             id="add-category-btn"
             type="button"
             onClick={openNewCategoryModal}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-white hover:border-[#B4833E] hover:text-[#D4AF37] text-xs font-semibold transition shadow-sm"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-[var(--foreground)] hover:border-[#B81862] hover:text-[#d43d8a] text-xs font-semibold transition shadow-sm"
           >
-            <FolderPlus className="w-4 h-4 text-[#B4833E]" />
+            <FolderPlus className="w-4 h-4 text-[#B81862]" />
             <span>Add Category</span>
           </button>
 
@@ -474,37 +474,37 @@ function ProductsContent() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-[#B4833E]" />
+                <Tag className="w-3.5 h-3.5 text-[#B81862]" />
                 Categories
               </span>
-              <span className="text-2xl font-bold text-white mt-2">
+              <span className="text-2xl font-bold text-[var(--foreground)] mt-2">
                 {categories.length}
               </span>
             </div>
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider flex items-center gap-1.5">
-                <Package className="w-3.5 h-3.5 text-[#B4833E]" />
+                <Package className="w-3.5 h-3.5 text-[#B81862]" />
                 Total Products
               </span>
-              <span className="text-2xl font-bold text-white mt-2">
+              <span className="text-2xl font-bold text-[var(--foreground)] mt-2">
                 {products.length}
               </span>
             </div>
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                 Live on Store
               </span>
-              <span className="text-2xl font-bold text-emerald-400 mt-2">
+              <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">
                 {products.filter((p) => p.isPublished).length}
               </span>
             </div>
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-4 flex flex-col justify-between">
               <span className="text-[11px] font-semibold text-[var(--muted)] uppercase tracking-wider flex items-center gap-1.5">
-                <Star className="w-3.5 h-3.5 text-[#D4AF37] fill-[#D4AF37]/30" />
+                <Star className="w-3.5 h-3.5 text-[#d43d8a] fill-[#d43d8a]/30" />
                 Featured Pieces
               </span>
-              <span className="text-2xl font-bold text-[#D4AF37] mt-2">
+              <span className="text-2xl font-bold text-[#B81862] dark:text-[#d43d8a] mt-2">
                 {products.filter((p) => p.isFeatured).length}
               </span>
             </div>
@@ -520,13 +520,13 @@ function ProductsContent() {
                 value={folderSearch}
                 onChange={(e) => setFolderSearch(e.target.value)}
                 placeholder="Search collection folders by name..."
-                className="w-full pl-10 pr-9 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-white placeholder-[#777] focus:outline-none focus:border-[#B4833E] focus:ring-1 focus:ring-[#B4833E]/20 transition"
+                className="w-full pl-10 pr-9 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none focus:border-[#B81862] focus:ring-1 focus:ring-[#B81862]/20 transition"
               />
               {folderSearch && (
                 <button
                   type="button"
                   onClick={() => setFolderSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] p-1"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -537,15 +537,15 @@ function ProductsContent() {
           {/* Category Folders Grid */}
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
+              <Loader2 className="w-8 h-8 animate-spin text-[#B81862]" />
               <span className="text-xs text-[var(--muted)]">Loading collections & products...</span>
             </div>
           ) : visibleCategories.length === 0 ? (
             <div className="p-12 text-center bg-[var(--card)] border border-[var(--border)] rounded-3xl space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#B4833E]/10 border border-[#B4833E]/20 text-[#B4833E] flex items-center justify-center mx-auto">
+              <div className="w-14 h-14 rounded-2xl bg-[#B81862]/10 border border-[#B81862]/20 text-[#B81862] flex items-center justify-center mx-auto">
                 <FolderPlus className="w-7 h-7" />
               </div>
-              <h3 className="font-serif text-lg font-bold text-white">No Category Folders Found</h3>
+              <h3 className="font-serif text-lg font-bold text-[var(--foreground)]">No Category Folders Found</h3>
               <p className="text-xs text-[var(--muted)] max-w-md mx-auto">
                 {folderSearch
                   ? `No collection matched "${folderSearch}". Try clearing search.`
@@ -577,7 +577,7 @@ function ProductsContent() {
                   <div
                     key={cat._id}
                     id={`folder-${cat._id}`}
-                    className="group relative rounded-3xl overflow-hidden cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-[#B4833E]/15 transition-all duration-400 hover:-translate-y-1.5 border border-[#2a2a2a] hover:border-[#D4AF37]/50"
+                    className="group relative rounded-3xl overflow-hidden cursor-pointer shadow-xl hover:shadow-2xl hover:shadow-[#B81862]/15 transition-all duration-400 hover:-translate-y-1.5 border border-[#2a2a2a] hover:border-[#d43d8a]/50"
                     style={{ minHeight: 260 }}
                   >
                     {/* Cover Image / Gradient Background */}
@@ -595,8 +595,8 @@ function ProductsContent() {
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-[#1a1512] via-[#1e1a14] to-[#0f0d0a] flex items-center justify-center">
                           <div className="text-center opacity-30">
-                            <Tag className="w-16 h-16 mx-auto text-[#D4AF37] mb-2" />
-                            <span className="text-[#D4AF37] text-xs font-semibold tracking-widest uppercase">Collection</span>
+                            <Tag className="w-16 h-16 mx-auto text-[#d43d8a] mb-2" />
+                            <span className="text-[#d43d8a] text-xs font-semibold tracking-widest uppercase">Collection</span>
                           </div>
                         </div>
                       )}
@@ -629,7 +629,7 @@ function ProductsContent() {
                           type="button"
                           onClick={(e) => openEditCategoryModal(cat, e)}
                           title="Edit Category"
-                          className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-[#D4AF37] hover:text-black hover:border-[#D4AF37] transition flex items-center justify-center shadow-lg"
+                          className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-[#d43d8a] hover:text-black hover:border-[#d43d8a] transition flex items-center justify-center shadow-lg"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </button>
@@ -652,7 +652,7 @@ function ProductsContent() {
                       className="absolute bottom-0 left-0 right-0 p-4 z-10"
                       onClick={() => setParam("category", cat._id)}
                     >
-                      <h2 className="font-serif text-xl font-bold text-white group-hover:text-[#D4AF37] transition-colors leading-tight mb-1">
+                      <h2 className="font-serif text-xl font-bold text-white group-hover:text-[#d43d8a] transition-colors leading-tight mb-1">
                         {cat.name}
                       </h2>
                       {cat.description && (
@@ -672,7 +672,7 @@ function ProductsContent() {
                             </span>
                           )}
                         </div>
-                        <span className="text-xs font-bold text-[#D4AF37] group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                        <span className="text-xs font-bold text-[#d43d8a] group-hover:translate-x-1 transition-transform flex items-center gap-1">
                           <span>Browse</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </span>
@@ -698,7 +698,7 @@ function ProductsContent() {
 
                   <div className="absolute top-3 left-3">
                     <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-900/70 text-amber-300 border border-amber-500/30 backdrop-blur-sm">
-                      ● Needs Category
+                      ● Needs Category
                     </span>
                   </div>
 
@@ -735,7 +735,7 @@ function ProductsContent() {
               type="button"
               id="back-to-folders-btn"
               onClick={() => setParam("category", null)}
-              className="flex items-center gap-2 text-xs font-bold text-[#D4AF37] hover:underline cursor-pointer"
+              className="flex items-center gap-2 text-xs font-bold text-[#d43d8a] hover:underline cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to All Categories</span>
@@ -746,9 +746,9 @@ function ProductsContent() {
                 <button
                   type="button"
                   onClick={() => openEditCategoryModal(currentCategory)}
-                  className="px-3 py-1.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs font-semibold text-[var(--muted)] hover:text-white transition flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs font-semibold text-[var(--muted)] hover:text-[var(--foreground)] transition flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Edit className="w-3 h-3 text-[#B4833E]" />
+                  <Edit className="w-3 h-3 text-[#B81862]" />
                   <span>Edit Category</span>
                 </button>
               </div>
@@ -767,13 +767,13 @@ function ProductsContent() {
                   value={searchQuery}
                   onChange={(e) => setParam("search", e.target.value)}
                   placeholder={`Search in ${currentCategory?.name || "this collection"}...`}
-                  className="w-full pl-10 pr-9 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-white placeholder-[#666] focus:outline-none focus:border-[#B4833E] transition"
+                  className="w-full pl-10 pr-9 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none focus:border-[#B81862] transition"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setParam("search", null)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] p-1"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -786,36 +786,36 @@ function ProductsContent() {
                 <select
                   value={stockFilter}
                   onChange={(e) => setParam("stock", e.target.value)}
-                  className="px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-[#B4833E] transition cursor-pointer min-w-[125px]"
+                  className="px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[125px]"
                 >
-                  <option value="all">All Stock</option>
-                  <option value="in_stock">In Stock</option>
-                  <option value="made_to_order">Made to Order</option>
-                  <option value="out_of_stock">Out of Stock</option>
+                  <option value="all" className="bg-[var(--surface)] text-[var(--foreground)]">All Stock</option>
+                  <option value="in_stock" className="bg-[var(--surface)] text-[var(--foreground)]">In Stock</option>
+                  <option value="made_to_order" className="bg-[var(--surface)] text-[var(--foreground)]">Made to Order</option>
+                  <option value="out_of_stock" className="bg-[var(--surface)] text-[var(--foreground)]">Out of Stock</option>
                 </select>
 
                 {/* Publish status */}
                 <select
                   value={statusFilter}
                   onChange={(e) => setParam("status", e.target.value)}
-                  className="px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-[#B4833E] transition cursor-pointer min-w-[115px]"
+                  className="px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[115px]"
                 >
-                  <option value="all">All Status</option>
-                  <option value="published">Live Only</option>
-                  <option value="draft">Draft Only</option>
+                  <option value="all" className="bg-[var(--surface)] text-[var(--foreground)]">All Status</option>
+                  <option value="published" className="bg-[var(--surface)] text-[var(--foreground)]">Live Only</option>
+                  <option value="draft" className="bg-[var(--surface)] text-[var(--foreground)]">Draft Only</option>
                 </select>
 
                 {/* Sort */}
                 <select
                   value={sortBy}
                   onChange={(e) => setParam("sort", e.target.value)}
-                  className="px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-white focus:outline-none focus:border-[#B4833E] transition cursor-pointer min-w-[140px]"
+                  className="px-3 py-2.5 bg-[var(--surface-2)] border border-[var(--border)] rounded-xl text-xs text-[var(--foreground)] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[140px]"
                 >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="name-asc">Name: A to Z</option>
+                  <option value="newest" className="bg-[var(--surface)] text-[var(--foreground)]">Newest First</option>
+                  <option value="oldest" className="bg-[var(--surface)] text-[var(--foreground)]">Oldest First</option>
+                  <option value="price-desc" className="bg-[var(--surface)] text-[var(--foreground)]">Price: High to Low</option>
+                  <option value="price-asc" className="bg-[var(--surface)] text-[var(--foreground)]">Price: Low to High</option>
+                  <option value="name-asc" className="bg-[var(--surface)] text-[var(--foreground)]">Name: A to Z</option>
                 </select>
 
                 {/* View toggle */}
@@ -825,8 +825,8 @@ function ProductsContent() {
                     onClick={() => setViewMode("list")}
                     className={`p-1.5 rounded-lg transition ${
                       viewMode === "list"
-                        ? "bg-[#B4833E] text-black shadow-xs font-bold"
-                        : "text-[var(--muted)] hover:text-white"
+                        ? "bg-[#B81862] text-black shadow-xs font-bold"
+                        : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                     title="Table View"
                   >
@@ -837,8 +837,8 @@ function ProductsContent() {
                     onClick={() => setViewMode("grid")}
                     className={`p-1.5 rounded-lg transition ${
                       viewMode === "grid"
-                        ? "bg-[#B4833E] text-black shadow-xs font-bold"
-                        : "text-[var(--muted)] hover:text-white"
+                        ? "bg-[#B81862] text-black shadow-xs font-bold"
+                        : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                     title="Grid View"
                   >
@@ -850,8 +850,8 @@ function ProductsContent() {
 
             <div className="flex items-center justify-between text-xs text-[var(--muted)] pt-1 border-t border-[var(--border)]/40">
               <span>
-                Showing <strong className="text-white font-semibold">{displayedProducts.length}</strong> {displayedProducts.length === 1 ? "piece" : "pieces"}
-                {currentCategory && <span> in <span className="text-[#D4AF37] font-medium">{currentCategory.name}</span></span>}
+                Showing <strong className="text-[var(--foreground)] font-semibold">{displayedProducts.length}</strong> {displayedProducts.length === 1 ? "piece" : "pieces"}
+                {currentCategory && <span> in <span className="text-[#B81862] dark:text-[#d43d8a] font-medium">{currentCategory.name}</span></span>}
               </span>
               {(searchQuery || stockFilter !== "all" || statusFilter !== "all") && (
                 <button
@@ -861,7 +861,7 @@ function ProductsContent() {
                     if (selectedFolderId) p.set("category", selectedFolderId);
                     router.push(`/admin/products?${p.toString()}`);
                   }}
-                  className="text-xs text-[#D4AF37] hover:underline font-semibold"
+                  className="text-xs text-[#d43d8a] hover:underline font-semibold"
                 >
                   Clear filters
                 </button>
@@ -872,8 +872,8 @@ function ProductsContent() {
           {/* Products Empty State */}
           {displayedProducts.length === 0 ? (
             <div className="p-16 text-center bg-[var(--card)] border border-[var(--border)] rounded-3xl space-y-4">
-              <Package className="w-12 h-12 text-gray-500 mx-auto" />
-              <h3 className="font-serif text-lg font-bold text-white">
+              <Package className="w-12 h-12 text-[#B81862]/60 mx-auto" />
+              <h3 className="font-serif text-lg font-bold text-[var(--foreground)]">
                 No Products in this Category
               </h3>
               <p className="text-xs text-[var(--muted)] max-w-sm mx-auto">
@@ -944,7 +944,7 @@ function ProductsContent() {
                               <div className="min-w-0 flex-1">
                                 <Link
                                   href={`/admin/products/${p._id}`}
-                                  className="font-semibold text-white hover:text-[#D4AF37] transition block truncate text-sm"
+                                  className="font-semibold text-[var(--foreground)] hover:text-[#B81862] dark:hover:text-[#d43d8a] transition block truncate text-sm"
                                 >
                                   {p.name}
                                 </Link>
@@ -963,7 +963,7 @@ function ProductsContent() {
                           </td>
                           <td className="py-4 px-4 whitespace-nowrap">
                             <div className="flex flex-col">
-                              <span className="font-bold text-white text-sm">
+                              <span className="font-bold text-[var(--foreground)] text-sm">
                                 ₹{Number(p.discountPrice || p.price).toLocaleString("en-IN")}
                               </span>
                               {p.discountPrice && (
@@ -977,14 +977,14 @@ function ProductsContent() {
                             <span
                               className={`text-xs font-semibold inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
                                 p.stockStatus === "in_stock"
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
                                   : p.stockStatus === "out_of_stock"
-                                  ? "bg-red-500/10 text-red-400 border border-red-500/25"
-                                  : "bg-amber-500/10 text-amber-400 border border-amber-500/25"
+                                  ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25"
+                                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25"
                               }`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${
-                                p.stockStatus === "in_stock" ? "bg-emerald-400" : p.stockStatus === "out_of_stock" ? "bg-red-400" : "bg-amber-400"
+                                p.stockStatus === "in_stock" ? "bg-emerald-500" : p.stockStatus === "out_of_stock" ? "bg-red-500" : "bg-amber-500"
                               }`} />
                               {p.stockStatus === "in_stock"
                                 ? `In Stock (${p.quantity ?? 10})`
@@ -1001,8 +1001,8 @@ function ProductsContent() {
                               disabled={isLoading}
                               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition ${
                                 p.isPublished
-                                  ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
-                                  : "bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
+                                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
+                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25"
                               }`}
                             >
                               {p.isPublished ? (
@@ -1025,14 +1025,14 @@ function ProductsContent() {
                               onClick={() => toggleFeatured(p)}
                               className={`p-1.5 rounded-lg transition ${
                                 p.isFeatured
-                                  ? "text-[#D4AF37] hover:opacity-80"
-                                  : "text-gray-600 hover:text-gray-400"
+                                  ? "text-[#d43d8a] hover:opacity-80"
+                                  : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                               }`}
                               title={p.isFeatured ? "Featured Piece" : "Mark Featured"}
                             >
                               <Star
                                 className={`w-4 h-4 ${
-                                  p.isFeatured ? "fill-[#D4AF37]" : ""
+                                  p.isFeatured ? "fill-[#d43d8a]" : ""
                                 }`}
                               />
                             </button>
@@ -1043,7 +1043,7 @@ function ProductsContent() {
                               <Link
                                 id={`edit-product-${p._id}`}
                                 href={`/admin/products/${p._id}`}
-                                className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-[var(--surface-2)] transition"
+                                className="p-2 rounded-xl text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition"
                                 title="Edit Product Details"
                               >
                                 <Edit className="w-4 h-4" />
@@ -1053,7 +1053,7 @@ function ProductsContent() {
                               <button
                                 type="button"
                                 onClick={() => setDeleteProductTarget(p)}
-                                className="p-2 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                                className="p-2 rounded-xl text-[var(--muted)] hover:text-red-500 hover:bg-red-500/10 transition cursor-pointer"
                                 title="Delete"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1086,7 +1086,7 @@ function ProductsContent() {
                   <div
                     key={p._id}
                     id={`grid-product-${p._id}`}
-                    className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden group hover:border-[#B4833E]/40 transition flex flex-col justify-between"
+                    className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden group hover:border-[#B81862]/40 transition flex flex-col justify-between"
                   >
                     <div className="relative aspect-square bg-[var(--surface-2)] overflow-hidden">
                       {img ? (
@@ -1113,7 +1113,7 @@ function ProductsContent() {
                           {p.isPublished ? "Live" : "Draft"}
                         </span>
                         {p.isFeatured && (
-                          <span className="badge bg-[#D4AF37] text-black">
+                          <span className="badge bg-[#d43d8a] text-black">
                             <Star className="w-2.5 h-2.5 mr-1 fill-black" />
                             Featured
                           </span>
@@ -1142,7 +1142,7 @@ function ProductsContent() {
 
                     <div className="p-3.5 space-y-2">
                       <div>
-                        <h3 className="font-semibold text-white text-sm line-clamp-1">
+                        <h3 className="font-semibold text-[var(--foreground)] text-sm line-clamp-1">
                           {p.name}
                         </h3>
                         <span className="font-mono text-[10px] text-[var(--muted)]">
@@ -1151,12 +1151,12 @@ function ProductsContent() {
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
-                        <span className="font-bold text-white text-sm">
+                        <span className="font-bold text-[var(--foreground)] text-sm">
                           ₹{Number(p.discountPrice || p.price).toLocaleString("en-IN")}
                         </span>
                         <Link
                           href={`/admin/products/${p._id}`}
-                          className="text-xs font-bold text-[#B4833E] hover:text-[#D4AF37] transition"
+                          className="text-xs font-bold text-[#B81862] dark:text-[#B81862] hover:text-[#B81862] dark:hover:text-[#d43d8a] transition"
                         >
                           Edit →
                         </Link>
@@ -1175,20 +1175,20 @@ function ProductsContent() {
       ────────────────────────────────────────────────────────────── */}
       {showCatModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
           onClick={() => setShowCatModal(false)}
         >
           <div
-            className="bg-[#181818] border border-[#333] rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative"
+            className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#2b2b2b]">
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 flex items-center justify-center text-[#D4AF37]">
+                <div className="w-9 h-9 rounded-xl bg-[#d43d8a]/10 border border-[#d43d8a]/20 flex items-center justify-center text-[#d43d8a]">
                   <FolderPlus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-serif text-lg font-bold text-white">
+                  <h3 className="font-serif text-lg font-bold text-[var(--foreground)]">
                     {catEditTarget ? "Edit Collection Folder" : "Add New Collection Folder"}
                   </h3>
                   <p className="text-[11px] text-[var(--muted)]">
@@ -1199,14 +1199,14 @@ function ProductsContent() {
               <button
                 type="button"
                 onClick={() => setShowCatModal(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-[#252525] transition"
+                className="p-1.5 rounded-lg text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {catError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-400 flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-xs text-red-500 flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{catError}</span>
               </div>
@@ -1214,7 +1214,7 @@ function ProductsContent() {
 
             <form onSubmit={handleSaveCategory} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-gray-300 block mb-1">
+                <label className="text-xs font-semibold text-[var(--foreground)] block mb-1">
                   Category Name *
                 </label>
                 <input
@@ -1246,7 +1246,7 @@ function ProductsContent() {
               <div>
                 <label className="text-xs font-semibold text-gray-300 block mb-1">
                   Cover Image URL
-                  <span className="text-[#B4833E] ml-1 font-normal">(shown on category card)</span>
+                  <span className="text-[#B81862] ml-1 font-normal">(shown on category card)</span>
                 </label>
                 <input
                   id="cat-image-input"
@@ -1275,7 +1275,7 @@ function ProductsContent() {
                       className="w-full h-full object-cover opacity-60"
                     />
                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-[10px] font-semibold text-[#D4AF37] bg-black/70 px-2.5 py-1 rounded-full border border-[#D4AF37]/30">
+                      <span className="text-[10px] font-semibold text-[#d43d8a] bg-black/70 px-2.5 py-1 rounded-full border border-[#d43d8a]/30">
                         Default Category Placeholder
                       </span>
                     </div>
@@ -1285,7 +1285,7 @@ function ProductsContent() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-300 block mb-1">
+                  <label className="text-xs font-semibold text-[var(--foreground)] block mb-1">
                     Display Order
                   </label>
                   <input
@@ -1298,19 +1298,19 @@ function ProductsContent() {
                   />
                 </div>
                 <div className="flex flex-col justify-end">
-                  <label className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] cursor-pointer text-xs font-semibold text-white">
+                  <label className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] cursor-pointer text-xs font-semibold text-[var(--foreground)]">
                     <input
                       type="checkbox"
                       checked={catForm.isActive}
                       onChange={(e) => setCatForm({ ...catForm, isActive: e.target.checked })}
-                      className="accent-[#B4833E] rounded w-4 h-4"
+                      className="accent-[#B81862] rounded w-4 h-4"
                     />
                     <span>Active in Store</span>
                   </label>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-[#2b2b2b]">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-[var(--border)]">
                 <button
                   type="button"
                   onClick={() => setShowCatModal(false)}
@@ -1336,12 +1336,12 @@ function ProductsContent() {
           MODAL: DELETE PRODUCT CONFIRMATION
       ────────────────────────────────────────────────────────────── */}
       {deleteProductTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-sm w-full p-6">
-            <h3 className="font-bold text-white text-lg mb-2">Delete Product?</h3>
+            <h3 className="font-bold text-[var(--foreground)] text-lg mb-2">Delete Product?</h3>
             <p className="text-xs text-[var(--muted)] mb-6">
               Are you sure you want to permanently delete{" "}
-              <strong className="text-white">{deleteProductTarget.name}</strong>? This action cannot be undone.
+              <strong className="text-[var(--foreground)]">{deleteProductTarget.name}</strong>? This action cannot be undone.
             </p>
             <div className="flex gap-2.5 justify-end">
               <button
@@ -1354,7 +1354,7 @@ function ProductsContent() {
               <button
                 type="button"
                 onClick={confirmDeleteProduct}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition"
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer"
               >
                 Delete Piece
               </button>
@@ -1367,12 +1367,12 @@ function ProductsContent() {
           MODAL: DELETE CATEGORY CONFIRMATION
       ────────────────────────────────────────────────────────────── */}
       {deleteCategoryTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-sm w-full p-6">
-            <h3 className="font-bold text-white text-lg mb-2">Delete Category Folder?</h3>
+            <h3 className="font-bold text-[var(--foreground)] text-lg mb-2">Delete Category Folder?</h3>
             <p className="text-xs text-[var(--muted)] mb-6">
               This will delete the category folder{" "}
-              <strong className="text-white">{deleteCategoryTarget.name}</strong>. Products previously in this category will not be lost, but will move to Uncategorized.
+              <strong className="text-[var(--foreground)]">{deleteCategoryTarget.name}</strong>. Products previously in this category will not be lost, but will move to Uncategorized.
             </p>
             <div className="flex gap-2.5 justify-end">
               <button
@@ -1385,7 +1385,7 @@ function ProductsContent() {
               <button
                 type="button"
                 onClick={confirmDeleteCategory}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition"
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer"
               >
                 Delete Category
               </button>
@@ -1402,7 +1402,7 @@ export default function ProductsPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#B81862]" />
         </div>
       }
     >

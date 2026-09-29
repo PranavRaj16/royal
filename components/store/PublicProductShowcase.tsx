@@ -166,18 +166,18 @@ export default function PublicProductShowcase({
     selectedSort !== "featured";
 
   return (
-    <section id="products" className="py-16 sm:py-24 bg-white border-t border-[#E8E2D9]">
+    <section id="products" className="py-16 sm:py-24 bg-white dark:bg-[#0d0d0d] border-t border-[#E8E2D9] dark:border-[#2a2a2a] transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B4833E] block mb-2">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B81862] dark:text-[#d43d8a] block mb-2">
               Fine Adornments
             </span>
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141414] tracking-tight">
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-[#141414] dark:text-[#f5f5f5] tracking-tight">
               Catalogue Collection
             </h2>
-            <p className="mt-2 text-sm text-[#666059]">
+            <p className="mt-2 text-sm text-[#666059] dark:text-[#a0a0a0]">
               Showing {filteredProducts.length} handcrafted pieces
             </p>
           </div>
@@ -186,19 +186,19 @@ export default function PublicProductShowcase({
           <div className="flex flex-wrap items-center gap-3">
             {/* Search Input */}
             <div className="relative min-w-[240px] sm:min-w-[300px]">
-              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search jewellery, SKU, diamond..."
-                className="w-full pl-10 pr-4 py-2.5 text-xs bg-[#FAF8F5] border border-[#E8E2D9] rounded-full focus:outline-none focus:ring-2 focus:ring-[#B4833E]"
+                className="w-full pl-10 pr-4 py-2.5 text-xs bg-[#FFF8FB] dark:bg-[#1a1a1a] text-[#141414] dark:text-[#f5f5f5] border border-[#E8E2D9] dark:border-[#333] rounded-full focus:outline-none focus:ring-2 focus:ring-[#B81862]"
               />
               {search && (
                 <button
                   type="button"
                   onClick={() => setSearch("")}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-black"
+                  className="absolute right-3 top-3 text-gray-400 dark:text-gray-500 hover:text-black dark:hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -206,18 +206,18 @@ export default function PublicProductShowcase({
             </div>
 
             {/* Sort Selector */}
-            <div className="flex items-center gap-2 bg-[#FAF8F5] border border-[#E8E2D9] rounded-full px-3 py-1.5">
-              <ArrowUpDown className="w-3.5 h-3.5 text-gray-500" />
+            <div className="flex items-center gap-2 bg-[#FFF8FB] dark:bg-[#1a1a1a] border border-[#E8E2D9] dark:border-[#333] rounded-full px-3 py-1.5">
+              <ArrowUpDown className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
               <select
                 value={selectedSort}
                 onChange={(e) => setSelectedSort(e.target.value)}
-                className="text-xs font-semibold bg-transparent text-gray-800 focus:outline-none cursor-pointer"
+                className="text-xs font-semibold bg-transparent text-gray-800 dark:text-gray-200 focus:outline-none cursor-pointer"
               >
-                <option value="featured">Featured First</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="newest">Newest Additions</option>
-                <option value="name-asc">Name: A to Z</option>
+                <option value="featured" className="dark:bg-[#1a1a1a]">Featured First</option>
+                <option value="price-asc" className="dark:bg-[#1a1a1a]">Price: Low to High</option>
+                <option value="price-desc" className="dark:bg-[#1a1a1a]">Price: High to Low</option>
+                <option value="newest" className="dark:bg-[#1a1a1a]">Newest Additions</option>
+                <option value="name-asc" className="dark:bg-[#1a1a1a]">Name: A to Z</option>
               </select>
             </div>
           </div>
@@ -230,8 +230,8 @@ export default function PublicProductShowcase({
             onClick={() => handleCategoryClick("all")}
             className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider shrink-0 transition ${
               selectedCategory === "all"
-                ? "bg-[#141414] text-white shadow-sm"
-                : "bg-[#FAF8F5] text-gray-700 hover:bg-[#F3EFEA] border border-[#E8E2D9]"
+                ? "bg-[#141414] dark:bg-[#f5f5f5] text-white dark:text-black shadow-sm"
+                : "bg-[#FFF8FB] dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 hover:bg-[#FDE8F2] dark:hover:bg-[#252525] border border-[#E8E2D9] dark:border-[#333]"
             }`}
           >
             All Pieces ({initialProducts.length})
@@ -243,8 +243,8 @@ export default function PublicProductShowcase({
               onClick={() => handleCategoryClick(c.slug)}
               className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider shrink-0 transition ${
                 selectedCategory === c.slug
-                  ? "bg-[#B4833E] text-white shadow-sm"
-                  : "bg-[#FAF8F5] text-gray-700 hover:bg-[#F3EFEA] border border-[#E8E2D9]"
+                  ? "bg-[#B81862] text-white shadow-sm"
+                  : "bg-[#FFF8FB] dark:bg-[#1a1a1a] text-gray-700 dark:text-gray-300 hover:bg-[#FDE8F2] dark:hover:bg-[#252525] border border-[#E8E2D9] dark:border-[#333]"
               }`}
             >
               {c.name}
@@ -254,24 +254,24 @@ export default function PublicProductShowcase({
 
         {/* Active Filters Bar */}
         {hasActiveFilters && (
-          <div className="flex flex-wrap items-center gap-2 mb-8 p-3 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] text-xs">
-            <span className="font-semibold text-gray-600">Active Filters:</span>
+          <div className="flex flex-wrap items-center gap-2 mb-8 p-3 rounded-xl bg-[#FFF8FB] dark:bg-[#1a1a1a] border border-[#E8E2D9] dark:border-[#333] text-xs">
+            <span className="font-semibold text-gray-600 dark:text-gray-400">Active Filters:</span>
             {selectedCategory !== "all" && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#D9D2C7] text-[#141414] font-medium">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white dark:bg-[#252525] border border-[#D9D2C7] dark:border-[#444] text-[#141414] dark:text-[#f5f5f5] font-medium">
                 Category: {selectedCategory}
-                <button onClick={() => handleCategoryClick("all")}>×</button>
+                <button onClick={() => handleCategoryClick("all")} className="hover:text-[#B81862] ml-0.5">×</button>
               </span>
             )}
             {search && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white border border-[#D9D2C7] text-[#141414] font-medium">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white dark:bg-[#252525] border border-[#D9D2C7] dark:border-[#444] text-[#141414] dark:text-[#f5f5f5] font-medium">
                 &ldquo;{search}&rdquo;
-                <button onClick={() => setSearch("")}>×</button>
+                <button onClick={() => setSearch("")} className="hover:text-[#B81862] ml-0.5">×</button>
               </span>
             )}
             <button
               type="button"
               onClick={clearAllFilters}
-              className="text-xs text-[#B4833E] font-semibold hover:underline ml-auto"
+              className="text-xs text-[#B81862] dark:text-[#d43d8a] font-semibold hover:underline ml-auto"
             >
               Clear all filters
             </button>
@@ -281,18 +281,18 @@ export default function PublicProductShowcase({
         {/* Product Responsive Grid */}
         {/* Requirement: Desktop 4 columns, Tablet 3 columns, Mobile 2 columns */}
         {filteredProducts.length === 0 ? (
-          <div className="p-16 text-center border-2 border-dashed border-[#E8E2D9] rounded-2xl bg-[#FAF8F5]">
-            <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="font-serif text-xl font-bold text-gray-800">
+          <div className="p-16 text-center border-2 border-dashed border-[#E8E2D9] dark:border-[#333] rounded-2xl bg-[#FFF8FB] dark:bg-[#161616]">
+            <Package className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+            <h3 className="font-serif text-xl font-bold text-gray-800 dark:text-gray-200">
               No matching jewellery found
             </h3>
-            <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
               We couldn&apos;t find any pieces matching your current filters. Try resetting search or selecting another collection.
             </p>
             <button
               type="button"
               onClick={clearAllFilters}
-              className="mt-5 px-5 py-2.5 rounded-full bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition"
+              className="mt-5 px-5 py-2.5 rounded-full bg-[#141414] dark:bg-white text-white dark:text-black text-xs font-semibold hover:bg-[#B81862] dark:hover:bg-[#B81862] dark:hover:text-white transition"
             >
               Reset Filters
             </button>

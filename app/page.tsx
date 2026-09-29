@@ -101,9 +101,10 @@ export default function SimpleCataloguePage() {
 
     return products.filter((p) => {
       if (selectedCategory !== "all") {
-        const catObj = typeof p.categoryId === "object" && p.categoryId !== null
-          ? (p.categoryId as { _id?: string; slug?: string; name?: string })
-          : (p.category as { _id?: string; slug?: string; name?: string } | undefined);
+        const catObj =
+          typeof p.categoryId === "object" && p.categoryId !== null
+            ? (p.categoryId as { _id?: string; slug?: string; name?: string })
+            : (p.category as { _id?: string; slug?: string; name?: string } | undefined);
         const catId = typeof p.categoryId === "string" ? p.categoryId : catObj?._id;
         const catSlug = catObj?.slug;
         const catName = catObj?.name?.toLowerCase();
@@ -111,11 +112,10 @@ export default function SimpleCataloguePage() {
         const match =
           catId === selectedCategory ||
           catSlug === selectedCategory ||
-          (activeCat && (
-            catId === activeCat._id ||
-            (catSlug && activeCat.slug && catSlug === activeCat.slug) ||
-            (catName && activeCat.name && catName === activeCat.name.toLowerCase())
-          ));
+          (activeCat &&
+            (catId === activeCat._id ||
+              (catSlug && activeCat.slug && catSlug === activeCat.slug) ||
+              (catName && activeCat.name && catName === activeCat.name.toLowerCase())));
 
         if (!match) return false;
       }
@@ -123,7 +123,9 @@ export default function SimpleCataloguePage() {
         const q = search.toLowerCase().trim();
         const matchesName = p.name?.toLowerCase().includes(q);
         const matchesDesc = (p.shortDescription || p.description || "").toLowerCase().includes(q);
-        const pCatName = (typeof p.categoryId === "object" ? (p.categoryId as { name?: string })?.name : null) || p.category?.name;
+        const pCatName =
+          (typeof p.categoryId === "object" ? (p.categoryId as { name?: string })?.name : null) ||
+          p.category?.name;
         const matchesCat = pCatName?.toLowerCase().includes(q);
         if (!matchesName && !matchesDesc && !matchesCat) return false;
       }
@@ -146,7 +148,9 @@ export default function SimpleCataloguePage() {
     const catName =
       (typeof p.categoryId === "object" && p.categoryId !== null
         ? (p.categoryId as { name?: string })?.name
-        : null) || p.category?.name || "";
+        : null) ||
+      p.category?.name ||
+      "";
     return getProductPlaceholder(catName, p.name);
   };
 
@@ -168,7 +172,7 @@ export default function SimpleCataloguePage() {
     setShowVisitorModal(false);
   };
 
-  // Open request modal — prompt for visitor info first if missing
+  // Open request modal
   const openRequestModal = (product: IProduct, e: React.MouseEvent) => {
     e.stopPropagation();
     setRequestProduct(product);
@@ -177,7 +181,6 @@ export default function SimpleCataloguePage() {
     setRequestSuccess(false);
     setRequestError("");
     if (!visitorInfo) {
-      // Will open visitor modal; after saving, reopen request
       setShowVisitorModal(true);
     }
   };
@@ -215,62 +218,68 @@ export default function SimpleCataloguePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0d0d0d] text-[#f5f5f5]">
+    <div className="min-h-screen flex flex-col bg-[#FFF8FB] dark:bg-[#0d0d0d] text-[#141414] dark:text-[#f5f5f5] transition-colors duration-300">
 
       {/* ── VISITOR INFO MODAL ─────────────────────────────────────── */}
       {showVisitorModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-[#161616] border border-[#2e2e2e] rounded-3xl max-w-sm w-full p-7 shadow-2xl relative">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-[#161616] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-3xl max-w-sm w-full p-7 shadow-2xl relative text-left">
             {/* Skip */}
             <button
               onClick={() => setShowVisitorModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#777] hover:text-white hover:bg-white/5 transition"
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#666] hover:text-black dark:text-[#aaa] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition"
               title="Skip for now"
             >
               <X className="w-4 h-4" />
             </button>
 
             <div className="text-center mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#B4833E] to-[#D4AF37] flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <User className="w-7 h-7 text-black" />
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#B81862] to-[#d43d8a] flex items-center justify-center mx-auto mb-4 shadow-lg text-white">
+                <User className="w-7 h-7" />
               </div>
-              <h2 className="font-serif text-xl font-bold text-white">Welcome to Royal Jewellers</h2>
-              <p className="text-xs text-[#888] mt-1.5 leading-relaxed">
+              <h2 className="font-serif text-xl font-bold text-[#111111] dark:text-white">Welcome to Dwara Collections</h2>
+              <p className="text-xs text-[#555047] dark:text-[#aaa] mt-1.5 leading-relaxed">
                 Enter your details to browse and request items from our exclusive collection.
               </p>
             </div>
 
             <form onSubmit={handleSaveVisitor} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#888] mb-1.5">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1.5">
                   Your Name *
                 </label>
                 <input
                   type="text"
                   value={visitorForm.name}
-                  onChange={(e) => { setVisitorForm(f => ({ ...f, name: e.target.value })); setVisitorFormError(""); }}
+                  onChange={(e) => {
+                    setVisitorForm((f) => ({ ...f, name: e.target.value }));
+                    setVisitorFormError("");
+                  }}
                   placeholder="e.g. Priya Sharma"
                   autoFocus
-                  className="w-full px-4 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B4833E] transition"
+                  className="w-full px-4 py-2.5 bg-[#FDF0F6] dark:bg-[#1e1e1e] border border-[#D0C7B8] dark:border-[#333] rounded-xl text-sm text-[#111111] dark:text-white placeholder-[#888] dark:placeholder-[#666] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] transition"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#888] mb-1.5">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1.5">
                   Phone Number *
                 </label>
                 <input
                   ref={phoneRef}
                   type="tel"
                   value={visitorForm.phone}
-                  onChange={(e) => { setVisitorForm(f => ({ ...f, phone: e.target.value })); setVisitorFormError(""); }}
+                  onChange={(e) => {
+                    setVisitorForm((f) => ({ ...f, phone: e.target.value }));
+                    setVisitorFormError("");
+                  }}
                   placeholder="e.g. 9876543210"
-                  className="w-full px-4 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B4833E] transition"
+                  className="w-full px-4 py-2.5 bg-[#FDF0F6] dark:bg-[#1e1e1e] border border-[#D0C7B8] dark:border-[#333] rounded-xl text-sm text-[#111111] dark:text-white placeholder-[#888] dark:placeholder-[#666] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] transition"
                 />
               </div>
 
               {visitorFormError && (
-                <p className="flex items-center gap-1.5 text-xs text-red-400">
+                <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {visitorFormError}
                 </p>
@@ -278,14 +287,14 @@ export default function SimpleCataloguePage() {
 
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#B4833E] to-[#D4AF37] text-black font-bold text-sm shadow-md hover:opacity-90 transition"
+                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-black font-bold text-sm shadow-md hover:opacity-90 transition cursor-pointer"
               >
                 Continue to Catalogue
               </button>
               <button
                 type="button"
                 onClick={() => setShowVisitorModal(false)}
-                className="w-full py-2 text-xs text-[#666] hover:text-[#999] transition"
+                className="w-full py-2 text-xs text-[#666] dark:text-[#aaa] hover:text-black dark:hover:text-white transition cursor-pointer"
               >
                 Skip for now
               </button>
@@ -297,22 +306,24 @@ export default function SimpleCataloguePage() {
       {/* ── REQUEST ITEM MODAL ─────────────────────────────────────── */}
       {requestProduct && visitorInfo && (
         <div
-          className="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => { if (!requestSubmitting) setRequestProduct(null); }}
+          className="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/50 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => {
+            if (!requestSubmitting) setRequestProduct(null);
+          }}
         >
           <div
-            className="bg-[#161616] border border-[#2e2e2e] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl"
+            className="bg-white dark:bg-[#161616] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl text-left"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-5">
               <div>
-                <h2 className="font-serif text-lg font-bold text-white">Request Item</h2>
-                <p className="text-xs text-[#888] mt-0.5">Submit a request and we'll contact you</p>
+                <h2 className="font-serif text-lg font-bold text-[#111111] dark:text-white">Request Item</h2>
+                <p className="text-xs text-[#555047] dark:text-[#aaa] mt-0.5">Submit a request and our concierge will contact you</p>
               </div>
               {!requestSubmitting && (
                 <button
                   onClick={() => setRequestProduct(null)}
-                  className="p-1.5 rounded-full text-[#777] hover:text-white hover:bg-white/5 transition"
+                  className="p-1.5 rounded-full text-[#666] hover:text-black dark:text-[#aaa] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -322,17 +333,17 @@ export default function SimpleCataloguePage() {
             {requestSuccess ? (
               <div className="text-center py-6 space-y-4">
                 <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
-                  <Check className="w-8 h-8 text-emerald-400" />
+                  <Check className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <h3 className="font-serif text-lg font-bold text-white">Request Submitted!</h3>
-                <p className="text-xs text-[#888] leading-relaxed">
-                  Thank you, <span className="text-white font-semibold">{visitorInfo.name}</span>! We&apos;ll contact you at{" "}
-                  <span className="text-[#D4AF37] font-semibold">{visitorInfo.phone}</span> regarding{" "}
-                  <span className="text-white font-semibold">{requestProduct.name}</span>.
+                <h3 className="font-serif text-lg font-bold text-[#111111] dark:text-white">Request Submitted!</h3>
+                <p className="text-xs text-[#555047] dark:text-[#aaa] leading-relaxed">
+                  Thank you, <span className="text-[#111111] dark:text-white font-semibold">{visitorInfo.name}</span>! We&apos;ll contact you at{" "}
+                  <span className="text-[#B81862] dark:text-[#d43d8a] font-semibold">{visitorInfo.phone}</span> regarding{" "}
+                  <span className="text-[#111111] dark:text-white font-semibold">{requestProduct.name}</span>.
                 </p>
                 <button
                   onClick={() => setRequestProduct(null)}
-                  className="px-6 py-2.5 rounded-xl bg-[#1e1e1e] border border-[#333] text-sm font-semibold text-white hover:border-[#B4833E] transition"
+                  className="px-6 py-2.5 rounded-xl bg-[#FDE8F2] dark:bg-[#1e1e1e] border border-[#D5CEC2] dark:border-[#333] text-sm font-semibold text-[#111111] dark:text-white hover:border-[#B81862] transition cursor-pointer"
                 >
                   Close
                 </button>
@@ -340,70 +351,70 @@ export default function SimpleCataloguePage() {
             ) : (
               <form onSubmit={handleSubmitRequest} className="space-y-4">
                 {/* Product Info */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#1e1e1e] border border-[#2a2a2a]">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-[#111]">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F8F5EE] dark:bg-[#1e1e1e] border border-[#E0D8CC] dark:border-[#2a2a2a]">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-[#E0D8CC] dark:bg-[#111]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={getPrimaryImage(requestProduct)} alt={requestProduct.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-white text-sm truncate">{requestProduct.name}</p>
-                    <p className="text-xs text-[#888] font-mono">SKU: {requestProduct.sku}</p>
+                    <p className="font-semibold text-[#111111] dark:text-white text-sm truncate">{requestProduct.name}</p>
+                    <p className="text-xs text-[#555047] dark:text-[#aaa] font-mono">SKU: {requestProduct.sku}</p>
                   </div>
                 </div>
 
                 {/* Customer Info (read-only) */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-[#1a1a1a] border border-[#262626]">
-                    <p className="text-[10px] text-[#666] uppercase tracking-wider font-semibold mb-0.5">Your Name</p>
-                    <p className="text-sm font-semibold text-white truncate">{visitorInfo.name}</p>
+                  <div className="p-3 rounded-xl bg-[#F8F5EE] dark:bg-[#1a1a1a] border border-[#E0D8CC] dark:border-[#262626]">
+                    <p className="text-[10px] text-[#665F55] dark:text-[#888] uppercase tracking-wider font-semibold mb-0.5">Your Name</p>
+                    <p className="text-sm font-semibold text-[#111111] dark:text-white truncate">{visitorInfo.name}</p>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#1a1a1a] border border-[#262626]">
-                    <p className="text-[10px] text-[#666] uppercase tracking-wider font-semibold mb-0.5">Phone</p>
-                    <p className="text-sm font-semibold text-white font-mono">{visitorInfo.phone}</p>
+                  <div className="p-3 rounded-xl bg-[#F8F5EE] dark:bg-[#1a1a1a] border border-[#E0D8CC] dark:border-[#262626]">
+                    <p className="text-[10px] text-[#665F55] dark:text-[#888] uppercase tracking-wider font-semibold mb-0.5">Phone</p>
+                    <p className="text-sm font-semibold text-[#111111] dark:text-white font-mono">{visitorInfo.phone}</p>
                   </div>
                 </div>
 
                 {/* Quantity */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#888] mb-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-2">
                     Quantity *
                   </label>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setRequestQty(Math.max(1, requestQty - 1))}
-                      className="w-9 h-9 rounded-xl bg-[#1e1e1e] border border-[#333] text-white flex items-center justify-center hover:border-[#B4833E] transition"
+                      className="w-9 h-9 rounded-xl bg-[#FDE8F2] dark:bg-[#1e1e1e] border border-[#D5CEC2] dark:border-[#333] text-[#111111] dark:text-white flex items-center justify-center hover:border-[#B81862] transition cursor-pointer"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-12 text-center font-bold text-lg text-white">{requestQty}</span>
+                    <span className="w-12 text-center font-bold text-lg text-[#111111] dark:text-white">{requestQty}</span>
                     <button
                       type="button"
                       onClick={() => setRequestQty(requestQty + 1)}
-                      className="w-9 h-9 rounded-xl bg-[#1e1e1e] border border-[#333] text-white flex items-center justify-center hover:border-[#B4833E] transition"
+                      className="w-9 h-9 rounded-xl bg-[#FDE8F2] dark:bg-[#1e1e1e] border border-[#D5CEC2] dark:border-[#333] text-[#111111] dark:text-white flex items-center justify-center hover:border-[#B81862] transition cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
-                    <span className="text-xs text-[#666]">piece{requestQty > 1 ? "s" : ""}</span>
+                    <span className="text-xs text-[#665F55] dark:text-[#aaa]">piece{requestQty > 1 ? "s" : ""}</span>
                   </div>
                 </div>
 
                 {/* Description (optional) */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#888] mb-1.5">
-                    Note / Special Request <span className="text-[#555] normal-case font-normal">(optional)</span>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1.5">
+                    Note / Special Request <span className="text-[#777] dark:text-[#888] normal-case font-normal">(optional)</span>
                   </label>
                   <textarea
                     rows={3}
                     value={requestDesc}
                     onChange={(e) => setRequestDesc(e.target.value)}
                     placeholder="Any specific requirements, customisation, or questions..."
-                    className="w-full px-4 py-2.5 bg-[#1e1e1e] border border-[#333] rounded-xl text-xs text-white placeholder-[#555] focus:outline-none focus:border-[#B4833E] transition resize-none"
+                    className="w-full px-4 py-2.5 bg-[#FDF0F6] dark:bg-[#1e1e1e] border border-[#D0C7B8] dark:border-[#333] rounded-xl text-xs text-[#111111] dark:text-white placeholder-[#888] dark:placeholder-[#666] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] transition resize-none"
                   />
                 </div>
 
                 {requestError && (
-                  <p className="flex items-center gap-1.5 text-xs text-red-400">
+                  <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     {requestError}
                   </p>
@@ -412,7 +423,7 @@ export default function SimpleCataloguePage() {
                 <button
                   type="submit"
                   disabled={requestSubmitting}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B4833E] to-[#D4AF37] text-black font-bold text-sm shadow-md hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-black font-bold text-sm shadow-md hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {requestSubmitting ? (
                     <>
@@ -422,7 +433,7 @@ export default function SimpleCataloguePage() {
                   ) : (
                     <>
                       <ShoppingBag className="w-4 h-4" />
-                      Submit Request
+                      Send Request
                     </>
                   )}
                 </button>
@@ -432,34 +443,41 @@ export default function SimpleCataloguePage() {
         </div>
       )}
 
-      {/* ── HEADER ─────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 bg-[#141414]/90 backdrop-blur-md border-b border-[#262626]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-3 shrink-0">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#B4833E] to-[#D4AF37] flex items-center justify-center font-bold text-black text-lg shadow-md">
-              R
-            </div>
-            <div>
-              <span className="block font-serif font-bold text-lg text-white leading-tight">Royal Jewellers</span>
-              <span className="block text-[11px] text-[#B4833E] font-medium tracking-wider uppercase">Product Catalogue</span>
-            </div>
-          </a>
+      {/* ── HEADER ────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0d0d0d]/95 backdrop-blur-md border-b border-[#E8E2D8] dark:border-[#222] transition-colors duration-300 shadow-xs">
+        {/* Top Gold Banner */}
+        <div className="bg-[#181512] text-[#FFF8FB] py-1 px-4 text-[10px] sm:text-xs font-medium text-center tracking-widest uppercase flex items-center justify-center gap-2">
+          <Sparkles className="w-3 h-3 text-[#d43d8a]" />
+          <span>Handcrafted Luxury Fine Jewellery • Certified BIS Hallmarked</span>
+        </div>
 
-          {/* Search Input */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          {/* Brand Logo */}
+          <Link href="/" className="flex items-center gap-2 shrink-0 group">
+            <img
+              src="/logo.png"
+              alt="Dwara Collections"
+              className="h-10 sm:h-12 w-auto object-contain group-hover:opacity-90 transition-opacity"
+            />
+          </Link>
+
+          {/* Search Bar - Desktop */}
           <div className="flex-1 max-w-md hidden sm:block">
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#777] pointer-events-none" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666] dark:text-[#888] pointer-events-none" />
               <input
                 id="search-input"
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search products by name or description..."
-                className="w-full pl-10 pr-4 py-2 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full text-sm text-white placeholder-[#777] focus:outline-none focus:border-[#B4833E] transition"
+                className="w-full pl-10 pr-4 py-2 bg-[#FDF0F6] dark:bg-[#1c1c1c] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-full text-sm text-[#111111] dark:text-white placeholder-[#777] dark:placeholder-[#888] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] shadow-xs transition"
               />
               {search && (
-                <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white">
+                <button
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-black dark:hover:text-white"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -467,11 +485,12 @@ export default function SimpleCataloguePage() {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Visitor Account Button */}
             {visitorInfo ? (
               <button
                 onClick={() => setShowVisitorModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#1e1e1e] text-[#B4833E] border border-[#B4833E]/30 hover:border-[#B4833E] transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FDF0F6] dark:bg-[#1e1e1e] text-[#B81862] dark:text-[#d43d8a] border border-[#B81862]/30 dark:border-[#B81862]/30 hover:border-[#B81862] shadow-xs transition cursor-pointer"
               >
                 <User className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline max-w-[100px] truncate">{visitorInfo.name}</span>
@@ -479,30 +498,32 @@ export default function SimpleCataloguePage() {
             ) : (
               <button
                 onClick={() => setShowVisitorModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#1e1e1e] text-[#aaa] border border-[#2e2e2e] hover:border-[#B4833E] hover:text-white transition"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FDF0F6] dark:bg-[#1e1e1e] text-[#332E29] dark:text-[#ccc] border border-[#D5CEC2] dark:border-[#2e2e2e] hover:border-[#B81862] hover:text-[#B81862] shadow-xs transition cursor-pointer"
               >
                 <User className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Sign In</span>
               </button>
             )}
 
+            {/* WhatsApp */}
             <a
               id="whatsapp-header"
               href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hi! I am interested in your jewellery catalogue.`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/30 hover:bg-[#25D366]/25 transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#25D366]/15 text-[#1b9e4b] dark:text-[#25D366] border border-[#25D366]/30 hover:bg-[#25D366]/25 shadow-xs transition"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span className="hidden md:inline">WhatsApp</span>
             </a>
 
+            {/* Admin Portal Link */}
             <Link
               id="admin-login-link"
               href="/admin/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#1e1e1e] text-[#a0a0a0] border border-[#2e2e2e] hover:text-white hover:border-[#B4833E] transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FDF0F6] dark:bg-[#1e1e1e] text-[#332E29] dark:text-[#aaa] border border-[#D5CEC2] dark:border-[#2e2e2e] hover:text-[#B81862] hover:border-[#B81862] shadow-xs transition"
             >
-              <Lock className="w-3 h-3 text-[#B4833E]" />
+              <Lock className="w-3 h-3 text-[#B81862] dark:text-[#B81862]" />
               <span>Admin</span>
             </Link>
           </div>
@@ -511,16 +532,19 @@ export default function SimpleCataloguePage() {
         {/* Mobile Search */}
         <div className="sm:hidden px-4 pb-3">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#777] pointer-events-none" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#666] dark:text-[#888] pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search products..."
-              className="w-full pl-9 pr-8 py-1.5 bg-[#1c1c1c] border border-[#2e2e2e] rounded-full text-xs text-white placeholder-[#777] focus:outline-none focus:border-[#B4833E]"
+              className="w-full pl-9 pr-8 py-1.5 bg-[#FDF0F6] dark:bg-[#1c1c1c] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-full text-xs text-[#111111] dark:text-white placeholder-[#777] dark:placeholder-[#888] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862]"
             />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-white">
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-black dark:hover:text-white"
+              >
                 <X className="w-3 h-3" />
               </button>
             )}
@@ -529,16 +553,16 @@ export default function SimpleCataloguePage() {
       </header>
 
       {/* ── HERO & CATEGORY BAR ────────────────────────────────────── */}
-      <section className="border-b border-[#222] bg-gradient-to-b from-[#141414] to-[#0d0d0d] py-8 px-4 text-center">
+      <section className="border-b border-[#E8E2D8] dark:border-[#222] bg-gradient-to-b from-[#F5EFE6] via-[#FAF7F2] to-[#FFF8FB] dark:from-[#141414] dark:to-[#0d0d0d] py-8 sm:py-10 px-4 text-center transition-colors duration-300">
         <div className="max-w-3xl mx-auto">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#B4833E]/15 text-[#D4AF37] border border-[#B4833E]/30 mb-3">
-            <Sparkles className="w-3 h-3" />
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[#B81862]/10 dark:bg-[#B81862]/15 text-[#B81862] dark:text-[#d43d8a] border border-[#B81862]/25 dark:border-[#B81862]/30 mb-3">
+            <Sparkles className="w-3.5 h-3.5" />
             Curated Jewellery Collection
           </span>
-          <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-white tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#111111] dark:text-white tracking-tight">
             Explore Our Catalogue
           </h1>
-          <p className="mt-2 text-sm text-[#888] max-w-xl mx-auto">
+          <p className="mt-2 text-sm text-[#555047] dark:text-[#aaa] max-w-xl mx-auto">
             Browse our handcrafted gold, natural solitaires, and heirloom bridal pieces. Each item is BIS hallmarked and certified.
           </p>
         </div>
@@ -548,10 +572,10 @@ export default function SimpleCataloguePage() {
           <div className="mt-6 flex items-center justify-center gap-2 overflow-x-auto pb-2 px-2 no-scrollbar">
             <button
               onClick={() => setSelectedCategory("all")}
-              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap shadow-xs cursor-pointer ${
                 selectedCategory === "all"
-                  ? "bg-[#B4833E] text-black shadow-md font-bold"
-                  : "bg-[#1a1a1a] text-[#aaa] hover:text-white hover:bg-[#252525] border border-[#282828]"
+                  ? "bg-[#B81862] dark:bg-[#B81862] text-white dark:text-black font-bold shadow-md"
+                  : "bg-white dark:bg-[#1a1a1a] text-[#332E29] dark:text-[#aaa] hover:text-black dark:hover:text-white hover:bg-[#FDE8F2] dark:hover:bg-[#252525] border border-[#D5CEC2] dark:border-[#282828]"
               }`}
             >
               All Products ({products.length})
@@ -560,10 +584,10 @@ export default function SimpleCataloguePage() {
               <button
                 key={cat._id}
                 onClick={() => setSelectedCategory(cat._id)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap ${
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap shadow-xs cursor-pointer ${
                   selectedCategory === cat._id
-                    ? "bg-[#B4833E] text-black shadow-md font-bold"
-                    : "bg-[#1a1a1a] text-[#aaa] hover:text-white hover:bg-[#252525] border border-[#282828]"
+                    ? "bg-[#B81862] dark:bg-[#B81862] text-white dark:text-black font-bold shadow-md"
+                    : "bg-white dark:bg-[#1a1a1a] text-[#332E29] dark:text-[#aaa] hover:text-black dark:hover:text-white hover:bg-[#FDE8F2] dark:hover:bg-[#252525] border border-[#D5CEC2] dark:border-[#282828]"
                 }`}
               >
                 {cat.name}
@@ -576,10 +600,13 @@ export default function SimpleCataloguePage() {
       {/* ── PRODUCT GRID ──────────────────────────────────────────── */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#777]">
-            Showing <span className="text-white font-bold">{filteredProducts.length}</span> items
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#665F55] dark:text-[#aaa]">
+            Showing <span className="text-[#111111] dark:text-white font-bold">{filteredProducts.length}</span> items
             {selectedCategory !== "all" && (
-              <> in <span className="text-[#D4AF37]">{categories.find((c) => c._id === selectedCategory)?.name}</span></>
+              <>
+                {" "}
+                in <span className="text-[#B81862] dark:text-[#d43d8a] font-bold">{categories.find((c) => c._id === selectedCategory)?.name}</span>
+              </>
             )}
           </p>
         </div>
@@ -587,26 +614,31 @@ export default function SimpleCataloguePage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className="bg-[#161616] rounded-2xl border border-[#222] p-4 animate-pulse space-y-3">
-                <div className="w-full aspect-square bg-[#222] rounded-xl" />
-                <div className="h-4 bg-[#252525] rounded w-3/4" />
-                <div className="h-5 bg-[#252525] rounded w-1/2" />
-                <div className="h-3 bg-[#252525] rounded w-1/3" />
-                <div className="h-3 bg-[#252525] rounded w-full" />
+              <div key={i} className="bg-white dark:bg-[#161616] rounded-2xl border border-[#E5DFD4] dark:border-[#222] p-4 animate-pulse space-y-3 shadow-xs">
+                <div className="w-full aspect-square bg-[#ECE6DC] dark:bg-[#222] rounded-xl" />
+                <div className="h-4 bg-[#ECE6DC] dark:bg-[#252525] rounded w-3/4" />
+                <div className="h-5 bg-[#ECE6DC] dark:bg-[#252525] rounded w-1/2" />
+                <div className="h-3 bg-[#ECE6DC] dark:bg-[#252525] rounded w-1/3" />
+                <div className="h-3 bg-[#ECE6DC] dark:bg-[#252525] rounded w-full" />
               </div>
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="py-20 text-center bg-[#141414] rounded-2xl border border-[#222] max-w-md mx-auto p-6">
-            <Package className="w-12 h-12 text-[#555] mx-auto mb-3" />
-            <h3 className="font-serif text-lg font-bold text-white mb-1">No products found</h3>
-            <p className="text-xs text-[#888] mb-4">
-              {search ? `No products matched "${search}". Try searching another name.` : "No items available in this category yet."}
+          <div className="py-20 text-center bg-white dark:bg-[#141414] rounded-2xl border border-[#E5DFD4] dark:border-[#222] max-w-md mx-auto p-6 shadow-sm">
+            <Package className="w-12 h-12 text-[#888] dark:text-[#555] mx-auto mb-3" />
+            <h3 className="font-serif text-lg font-bold text-[#111111] dark:text-white mb-1">No products found</h3>
+            <p className="text-xs text-[#555047] dark:text-[#aaa] mb-4">
+              {search
+                ? `No products matched "${search}". Try searching another name.`
+                : "No items available in this category yet."}
             </p>
             {(search || selectedCategory !== "all") && (
               <button
-                onClick={() => { setSearch(""); setSelectedCategory("all"); }}
-                className="px-4 py-2 bg-[#222] hover:bg-[#333] text-xs font-semibold rounded-lg text-white transition"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedCategory("all");
+                }}
+                className="px-4 py-2 bg-[#FDE8F2] dark:bg-[#222] hover:bg-[#E2DDD3] dark:hover:bg-[#333] text-xs font-semibold rounded-lg text-[#111111] dark:text-white transition cursor-pointer"
               >
                 Clear Filters
               </button>
@@ -624,10 +656,10 @@ export default function SimpleCataloguePage() {
                 <div
                   key={product._id}
                   onClick={() => setSelectedProduct(product)}
-                  className="group bg-[#161616] hover:bg-[#1b1b1b] rounded-2xl border border-[#262626] hover:border-[#B4833E]/50 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer shadow-lg hover:shadow-[0_8px_30px_rgba(180,131,62,0.15)]"
+                  className="group bg-white dark:bg-[#161616] hover:bg-[#FFF8FB] dark:hover:bg-[#1b1b1b] rounded-2xl border border-[#E5DFD4] dark:border-[#262626] hover:border-[#B81862]/60 dark:hover:border-[#B81862]/60 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_30px_rgba(153,101,21,0.18)]"
                 >
                   {/* Image */}
-                  <div className="relative w-full aspect-square bg-[#101010] overflow-hidden">
+                  <div className="relative w-full aspect-square bg-[#F5F2EC] dark:bg-[#101010] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={imageUrl}
@@ -638,11 +670,17 @@ export default function SimpleCataloguePage() {
                     {/* Stock badge */}
                     <div className="absolute top-3 right-3">
                       {isOutOfStock ? (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-red-900/80 text-red-200 border border-red-700/50 backdrop-blur-sm">Out of Stock</span>
+                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-red-100 dark:bg-red-900/80 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700/50 backdrop-blur-sm shadow-xs">
+                          Out of Stock
+                        </span>
                       ) : isLowStock ? (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-900/80 text-amber-200 border border-amber-700/50 backdrop-blur-sm">Only {qty} left!</span>
+                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/50 backdrop-blur-sm shadow-xs">
+                          Only {qty} left!
+                        </span>
                       ) : (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-black/60 text-emerald-300 border border-emerald-500/30 backdrop-blur-sm">{qty} available</span>
+                        <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50/95 dark:bg-black/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 backdrop-blur-sm shadow-xs">
+                          {qty} available
+                        </span>
                       )}
                     </div>
                   </div>
@@ -652,48 +690,66 @@ export default function SimpleCataloguePage() {
                     <div>
                       {/* Category */}
                       {(() => {
-                        const catObj = typeof product.categoryId === "object" && product.categoryId !== null
-                          ? (product.categoryId as { name?: string })
-                          : (product.category as { name?: string } | undefined);
-                        const cName = catObj?.name || categories.find((c) => c._id === product.categoryId)?.name;
+                        const catObj =
+                          typeof product.categoryId === "object" && product.categoryId !== null
+                            ? (product.categoryId as { name?: string })
+                            : (product.category as { name?: string } | undefined);
+                        const cName =
+                          catObj?.name || categories.find((c) => c._id === product.categoryId)?.name;
                         return cName ? (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#B4833E] block mb-1">{cName}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#B81862] dark:text-[#d43d8a] block mb-1">
+                            {cName}
+                          </span>
                         ) : null;
                       })()}
 
-                      <h2 className="font-serif font-bold text-base text-white group-hover:text-[#D4AF37] transition-colors line-clamp-1">
+                      <h2 className="font-serif font-bold text-base text-[#111111] dark:text-white group-hover:text-[#B81862] dark:group-hover:text-[#d43d8a] transition-colors line-clamp-1">
                         {product.name}
                       </h2>
 
                       {/* Price */}
                       <div className="mt-1.5 flex items-baseline gap-2">
-                        <span className="font-bold text-lg text-[#D4AF37]">{formatPrice(product.price)}</span>
+                        <span className="font-bold text-lg text-[#B81862] dark:text-[#d43d8a]">
+                          {formatPrice(product.price)}
+                        </span>
                         {product.discountPrice && (
-                          <span className="text-xs text-[#777] line-through">{formatPrice(product.discountPrice)}</span>
+                          <span className="text-xs text-[#777] dark:text-[#888] line-through">
+                            {formatPrice(product.discountPrice)}
+                          </span>
                         )}
                       </div>
 
                       {/* Quantity */}
                       <div className="mt-2 flex items-center gap-1.5 text-xs">
-                        <Package className="w-3.5 h-3.5 text-[#B4833E]" />
-                        <span className="text-[#a0a0a0]">Quantity:</span>
-                        <span className={`font-semibold ${isOutOfStock ? "text-red-400" : isLowStock ? "text-amber-400" : "text-emerald-400"}`}>
+                        <Package className="w-3.5 h-3.5 text-[#B81862] dark:text-[#B81862]" />
+                        <span className="text-[#665F55] dark:text-[#aaa]">Quantity:</span>
+                        <span
+                          className={`font-semibold ${
+                            isOutOfStock
+                              ? "text-red-600 dark:text-red-400"
+                              : isLowStock
+                              ? "text-amber-700 dark:text-amber-400"
+                              : "text-emerald-700 dark:text-emerald-400"
+                          }`}
+                        >
                           {isOutOfStock ? "Out of Stock" : `${qty} units`}
                         </span>
                       </div>
 
                       {/* Description */}
-                      <p className="mt-2.5 text-xs text-[#888] line-clamp-2 leading-relaxed">
-                        {product.shortDescription || product.description || "Handcrafted luxury fine jewellery design hallmarked to perfection."}
+                      <p className="mt-2.5 text-xs text-[#555047] dark:text-[#aaa] line-clamp-2 leading-relaxed">
+                        {product.shortDescription ||
+                          product.description ||
+                          "Handcrafted luxury fine jewellery design hallmarked to perfection."}
                       </p>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="pt-2 border-t border-[#222] grid grid-cols-2 gap-2">
+                    <div className="pt-2 border-t border-[#E8E2D8] dark:border-[#222] grid grid-cols-2 gap-2">
                       {/* Request Item Button */}
                       <button
                         onClick={(e) => openRequestModal(product, e)}
-                        className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold bg-[#B4833E]/10 hover:bg-[#B4833E]/20 text-[#D4AF37] border border-[#B4833E]/25 hover:border-[#B4833E]/50 transition"
+                        className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold bg-[#B81862]/10 hover:bg-[#B81862]/20 dark:bg-[#B81862]/10 dark:hover:bg-[#B81862]/20 text-[#B81862] dark:text-[#d43d8a] border border-[#B81862]/25 hover:border-[#B81862]/50 transition cursor-pointer"
                       >
                         <ShoppingBag className="w-3.5 h-3.5" />
                         <span>Request</span>
@@ -707,7 +763,7 @@ export default function SimpleCataloguePage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold bg-[#202020] hover:bg-[#25D366]/20 text-[#ccc] hover:text-[#25D366] border border-[#2d2d2d] hover:border-[#25D366]/40 transition"
+                        className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold bg-[#F5F1EB] hover:bg-[#25D366]/20 dark:bg-[#202020] text-[#332E29] hover:text-[#1b9e4b] dark:text-[#ccc] dark:hover:text-[#25D366] border border-[#D5CEC2] dark:border-[#2d2d2d] hover:border-[#25D366]/40 transition"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                         <span>WhatsApp</span>
@@ -724,23 +780,23 @@ export default function SimpleCataloguePage() {
       {/* ── PRODUCT DETAIL MODAL ──────────────────────────────────── */}
       {selectedProduct && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setSelectedProduct(null)}
         >
           <div
-            className="bg-[#161616] border border-[#2e2e2e] rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[90vh]"
+            className="bg-white dark:bg-[#161616] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[90vh] text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close */}
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-3.5 right-3.5 z-20 p-2 rounded-full bg-black/70 text-white hover:bg-black hover:text-[#D4AF37] border border-white/10 transition shadow-md"
+              className="absolute top-3.5 right-3.5 z-20 p-2 rounded-full bg-white/90 dark:bg-black/70 text-gray-800 dark:text-white hover:bg-white dark:hover:bg-black hover:text-[#B81862] dark:hover:text-[#d43d8a] border border-black/10 dark:border-white/10 transition shadow-md"
             >
               <X className="w-4 h-4" />
             </button>
 
             {/* Image */}
-            <div className="w-full md:w-1/2 aspect-square md:aspect-auto bg-[#101010] relative shrink-0 border-b md:border-b-0 md:border-r border-[#262626]">
+            <div className="w-full md:w-1/2 aspect-square md:aspect-auto bg-[#F5F2EC] dark:bg-[#101010] relative shrink-0 border-b md:border-b-0 md:border-r border-[#E5DFD4] dark:border-[#262626]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={getPrimaryImage(selectedProduct)}
@@ -749,7 +805,7 @@ export default function SimpleCataloguePage() {
               />
               {selectedProduct.isFeatured && (
                 <div className="absolute top-3.5 left-3.5">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#D4AF37] text-black shadow-md flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B81862] dark:bg-[#d43d8a] text-white dark:text-black shadow-md flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     Featured
                   </span>
@@ -762,46 +818,54 @@ export default function SimpleCataloguePage() {
               <div className="space-y-3.5">
                 {/* Category & SKU */}
                 <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#B4833E]">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862] dark:text-[#d43d8a]">
                     {(typeof selectedProduct.categoryId === "object" && selectedProduct.categoryId !== null
                       ? (selectedProduct.categoryId as { name?: string })?.name
-                      : null) || selectedProduct.category?.name || "Fine Jewellery"}
+                      : null) ||
+                      selectedProduct.category?.name ||
+                      "Fine Jewellery"}
                   </span>
-                  <span className="font-mono text-[11px] text-[#777] bg-[#222] px-2 py-0.5 rounded">
+                  <span className="font-mono text-[11px] text-[#665F55] dark:text-[#aaa] bg-[#FDE8F2] dark:bg-[#222] px-2 py-0.5 rounded">
                     SKU: {selectedProduct.sku}
                   </span>
                 </div>
 
-                <h2 className="font-serif text-xl sm:text-2xl font-bold text-white leading-snug tracking-tight">
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#111111] dark:text-white leading-snug tracking-tight">
                   {selectedProduct.name}
                 </h2>
 
                 {/* Price */}
-                <div className="flex items-baseline gap-2.5 pt-1 border-b border-[#262626] pb-3">
-                  <span className="text-2xl sm:text-3xl font-bold text-[#D4AF37]">
+                <div className="flex items-baseline gap-2.5 pt-1 border-b border-[#E8E2D8] dark:border-[#262626] pb-3">
+                  <span className="text-2xl sm:text-3xl font-bold text-[#B81862] dark:text-[#d43d8a]">
                     {formatPrice(selectedProduct.discountPrice || selectedProduct.price)}
                   </span>
                   {selectedProduct.discountPrice && (
-                    <span className="text-xs text-[#777] line-through font-medium">
+                    <span className="text-xs text-[#777] dark:text-[#888] line-through font-medium">
                       {formatPrice(selectedProduct.price)}
                     </span>
                   )}
                 </div>
 
                 {/* Stock */}
-                <div className="p-3 bg-[#1e1e1e] rounded-xl border border-[#2a2a2a] flex items-center justify-between text-xs">
-                  <span className="text-[#a0a0a0] flex items-center gap-1.5 font-medium">
-                    <Package className="w-4 h-4 text-[#B4833E]" />
+                <div className="p-3 bg-[#F8F5EE] dark:bg-[#1e1e1e] rounded-xl border border-[#E0D8CC] dark:border-[#2a2a2a] flex items-center justify-between text-xs">
+                  <span className="text-[#665F55] dark:text-[#aaa] flex items-center gap-1.5 font-medium">
+                    <Package className="w-4 h-4 text-[#B81862] dark:text-[#B81862]" />
                     Available Inventory:
                   </span>
-                  <span className="font-bold text-emerald-400">{selectedProduct.quantity ?? 10} units in stock</span>
+                  <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                    {selectedProduct.quantity ?? 10} units in stock
+                  </span>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#888] mb-1">Piece Description</h4>
-                  <p className="text-xs sm:text-sm text-[#ccc] leading-relaxed">
-                    {selectedProduct.description || selectedProduct.shortDescription || "Handcrafted luxury jewellery with certified hallmarked gold and natural diamonds."}
+                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1">
+                    Piece Description
+                  </h4>
+                  <p className="text-xs sm:text-sm text-[#332E29] dark:text-[#ddd] leading-relaxed">
+                    {selectedProduct.description ||
+                      selectedProduct.shortDescription ||
+                      "Handcrafted luxury jewellery with certified hallmarked gold and natural diamonds."}
                   </p>
                 </div>
               </div>
@@ -810,8 +874,11 @@ export default function SimpleCataloguePage() {
               <div className="pt-2 space-y-2">
                 {/* Request Item */}
                 <button
-                  onClick={(e) => { setSelectedProduct(null); openRequestModal(selectedProduct, e); }}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-[#B4833E] to-[#D4AF37] text-black shadow-md hover:opacity-90 transition"
+                  onClick={(e) => {
+                    setSelectedProduct(null);
+                    openRequestModal(selectedProduct, e);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-black shadow-md hover:opacity-90 transition cursor-pointer"
                 >
                   <ShoppingBag className="w-4 h-4" />
                   <span>Request This Item</span>
@@ -824,7 +891,7 @@ export default function SimpleCataloguePage() {
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#25D366] border border-[#25D366]/30 transition"
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#1b9e4b] dark:text-[#25D366] border border-[#25D366]/30 transition"
                 >
                   <MessageCircle className="w-4 h-4" />
                   <span>Enquire on WhatsApp</span>
@@ -836,12 +903,15 @@ export default function SimpleCataloguePage() {
       )}
 
       {/* ── FOOTER ────────────────────────────────────────────────── */}
-      <footer className="border-t border-[#222] bg-[#121212] py-6 px-4 text-center text-xs text-[#777]">
+      <footer className="border-t border-[#E8E2D8] dark:border-[#222] bg-[#FDE8F2] dark:bg-[#121212] py-6 px-4 text-center text-xs text-[#665F55] dark:text-[#888] transition-colors duration-300">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} Royal Jewellers. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Dwara Collections. All rights reserved.</p>
           <div className="flex items-center gap-4">
-            <Link href="/admin/login" className="text-[#aaa] hover:text-[#D4AF37] transition flex items-center gap-1">
-              <Lock className="w-3 h-3 text-[#B4833E]" />
+            <Link
+              href="/admin/login"
+              className="text-[#332E29] dark:text-[#aaa] hover:text-[#B81862] dark:hover:text-[#d43d8a] transition flex items-center gap-1 font-medium"
+            >
+              <Lock className="w-3 h-3 text-[#B81862] dark:text-[#B81862]" />
               Admin Portal
             </Link>
           </div>

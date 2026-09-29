@@ -29,10 +29,10 @@ export default async function StoreLayout({
   }).sort({ displayOrder: 1 });
 
   const branding = business.branding || {
-    primaryColor: "#B4833E",
+    primaryColor: "#B81862",
     secondaryColor: "#141414",
-    accentColor: "#D4AF37",
-    backgroundColor: "#FAF8F5",
+    accentColor: "#d43d8a",
+    backgroundColor: "#FFF8FB",
     textColor: "#1A1A1A",
   };
 
@@ -48,7 +48,7 @@ export default async function StoreLayout({
           "--primary": branding.primaryColor,
           "--secondary": branding.secondaryColor,
           "--accent": branding.accentColor,
-          "--background": branding.backgroundColor || "#FAF8F5",
+          "--background": branding.backgroundColor || "#FFF8FB",
           "--foreground": branding.textColor || "#1A1A1A",
         } as React.CSSProperties
       }

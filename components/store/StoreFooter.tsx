@@ -43,7 +43,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
                   href={business.socialLinks.instagram}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-8 h-8 rounded-full bg-[#222] hover:bg-[#B4833E] text-white flex items-center justify-center transition"
+                  className="w-8 h-8 rounded-full bg-[#222] hover:bg-[#B81862] text-white flex items-center justify-center transition"
                   aria-label="Instagram"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
                   href={business.socialLinks.facebook}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-8 h-8 rounded-full bg-[#222] hover:bg-[#B4833E] text-white flex items-center justify-center transition"
+                  className="w-8 h-8 rounded-full bg-[#222] hover:bg-[#B81862] text-white flex items-center justify-center transition"
                   aria-label="Facebook"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -69,7 +69,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
                   href={business.socialLinks.youtube}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-8 h-8 rounded-full bg-[#222] hover:bg-[#B4833E] text-white flex items-center justify-center transition"
+                  className="w-8 h-8 rounded-full bg-[#222] hover:bg-[#B81862] text-white flex items-center justify-center transition"
                   aria-label="YouTube"
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -82,7 +82,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
 
           {/* Col 2: Concierge & Direct Contact */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37]">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#d43d8a]">
               Concierge Service
             </h3>
             <ul className="space-y-3 text-xs text-gray-300">
@@ -91,7 +91,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
                   href={whatsappUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2.5 hover:text-[#D4AF37] transition group"
+                  className="flex items-center gap-2.5 hover:text-[#d43d8a] transition group"
                 >
                   <MessageCircle className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition" />
                   <span>WhatsApp: {business.whatsapp}</span>
@@ -101,9 +101,9 @@ export default function StoreFooter({ business }: StoreFooterProps) {
                 <li>
                   <a
                     href={`tel:${business.phone}`}
-                    className="flex items-center gap-2.5 hover:text-[#D4AF37] transition"
+                    className="flex items-center gap-2.5 hover:text-[#d43d8a] transition"
                   >
-                    <Phone className="w-4 h-4 text-[#B4833E]" />
+                    <Phone className="w-4 h-4 text-[#B81862]" />
                     <span>Call: {business.phone}</span>
                   </a>
                 </li>
@@ -112,7 +112,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
                 <li>
                   <a
                     href={`mailto:${business.email}`}
-                    className="flex items-center gap-2.5 hover:text-[#D4AF37] transition"
+                    className="flex items-center gap-2.5 hover:text-[#d43d8a] transition"
                   >
                     <Mail className="w-4 h-4 text-gray-400" />
                     <span>{business.email}</span>
@@ -124,12 +124,12 @@ export default function StoreFooter({ business }: StoreFooterProps) {
 
           {/* Col 3: Boutique Flagship & Location */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37]">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#d43d8a]">
               Boutique Location
             </h3>
             <div className="text-xs text-gray-300 space-y-2">
               <div className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 text-[#B4833E] shrink-0 mt-0.5" />
+                <MapPin className="w-4 h-4 text-[#B81862] shrink-0 mt-0.5" />
                 <span>
                   {business.address?.street || "42, Heritage Boulevard, Zaveri Bazaar"},
                   <br />
@@ -144,7 +144,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
                   href={business.address.mapsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[#D4AF37] hover:underline pt-2 text-[11px] font-semibold"
+                  className="inline-flex items-center gap-1.5 text-[#d43d8a] hover:underline pt-2 text-[11px] font-semibold"
                 >
                   <span>Open in Google Maps</span>
                   <ExternalLink className="w-3 h-3" />
@@ -155,12 +155,12 @@ export default function StoreFooter({ business }: StoreFooterProps) {
 
           {/* Col 4: Authenticity & Trust */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37]">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[#d43d8a]">
               Royal Trust Guarantee
             </h3>
             <div className="p-4 rounded-xl bg-[#1C1C1C] border border-[#2E2E2E] space-y-2 text-xs text-gray-400">
               <div className="flex items-center gap-2 text-white font-semibold">
-                <ShieldCheck className="w-4 h-4 text-[#D4AF37]" />
+                <ShieldCheck className="w-4 h-4 text-[#d43d8a]" />
                 <span>100% Certified Purity</span>
               </div>
               <p className="text-[11px] leading-relaxed">
@@ -178,7 +178,7 @@ export default function StoreFooter({ business }: StoreFooterProps) {
               Powered by CatalogueStudio
             </Link>
             <span>•</span>
-            <Link href="/admin/login" className="hover:text-[#D4AF37] transition">
+            <Link href="/admin/login" className="hover:text-[#d43d8a] transition">
               Store Owner Login
             </Link>
           </div>

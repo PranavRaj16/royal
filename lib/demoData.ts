@@ -109,7 +109,7 @@ export const DEMO_CATEGORIES: IDemoCategory[] = [
     name: "Gold Jewellery",
     slug: "gold-jewellery",
     description: "22-karat BIS hallmarked temple and antique gold designs crafted by master artisans.",
-    image: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=800&q=80",
+    image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80",
     displayOrder: 3,
     isActive: true,
   },
@@ -145,7 +145,7 @@ export const DEMO_CATEGORIES: IDemoCategory[] = [
     name: "Bracelets & Bangles",
     slug: "bracelets-bangles",
     description: "Flexible tennis bracelets, jadau kadas, and openable gold cuffs.",
-    image: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=800&q=80",
+    image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80",
     displayOrder: 7,
     isActive: true,
   },
@@ -317,7 +317,7 @@ export const DEMO_PRODUCTS: IDemoProduct[] = [
     tags: ["Gold", "22K Gold", "Bangles", "Temple Jewellery"],
     images: [
       {
-        url: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+        url: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
         alt: "Antique Gold Kadas",
         isPrimary: true,
         order: 0,
@@ -350,7 +350,7 @@ export const DEMO_PRODUCTS: IDemoProduct[] = [
     tags: ["Diamond", "Tennis Bracelet", "Classic", "18K Gold"],
     images: [
       {
-        url: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+        url: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
         alt: "Diamond Tennis Bracelet",
         isPrimary: true,
         order: 0,

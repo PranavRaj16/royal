@@ -27,10 +27,10 @@ const PRESETS: ThemePreset[] = [
   {
     name: "Regal Gold & Ivory (Default)",
     theme: "luxury",
-    primaryColor: "#B4833E",
+    primaryColor: "#B81862",
     secondaryColor: "#141414",
-    accentColor: "#D4AF37",
-    backgroundColor: "#FAF8F5",
+    accentColor: "#d43d8a",
+    backgroundColor: "#FFF8FB",
     textColor: "#1A1A1A",
   },
   {
@@ -70,10 +70,10 @@ export default function AppearancePage() {
 
   // Theme & Colors
   const [theme, setTheme] = useState<CatalogueTheme>("luxury");
-  const [primaryColor, setPrimaryColor] = useState("#B4833E");
+  const [primaryColor, setPrimaryColor] = useState("#B81862");
   const [secondaryColor, setSecondaryColor] = useState("#141414");
-  const [accentColor, setAccentColor] = useState("#D4AF37");
-  const [backgroundColor, setBackgroundColor] = useState("#FAF8F5");
+  const [accentColor, setAccentColor] = useState("#d43d8a");
+  const [backgroundColor, setBackgroundColor] = useState("#FFF8FB");
   const [textColor, setTextColor] = useState("#1A1A1A");
 
   // Hero & Sections
@@ -93,10 +93,10 @@ export default function AppearancePage() {
           const b: IBusiness = data.business;
           setBusinessSlug(b.slug || "royal-jewellers");
           setTheme(b.branding?.theme || "luxury");
-          setPrimaryColor(b.branding?.primaryColor || "#B4833E");
+          setPrimaryColor(b.branding?.primaryColor || "#B81862");
           setSecondaryColor(b.branding?.secondaryColor || "#141414");
-          setAccentColor(b.branding?.accentColor || "#D4AF37");
-          setBackgroundColor(b.branding?.backgroundColor || "#FAF8F5");
+          setAccentColor(b.branding?.accentColor || "#d43d8a");
+          setBackgroundColor(b.branding?.backgroundColor || "#FFF8FB");
           setTextColor(b.branding?.textColor || "#1A1A1A");
 
           setHeroHeading(b.catalogueSettings?.heroHeading || "");
@@ -166,7 +166,7 @@ export default function AppearancePage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#B81862]" />
         <span className="text-sm text-gray-500">Loading appearance studio...</span>
       </div>
     );
@@ -188,15 +188,15 @@ export default function AppearancePage() {
             href={`/store/${businessSlug}?preview=true`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-[#D9D2C7] text-xs font-semibold text-[#141414] hover:bg-[#F3EFEA] transition shadow-xs"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-white border border-[#D9D2C7] text-xs font-semibold text-[#141414] hover:bg-[#FDE8F2] transition shadow-xs"
           >
-            <Eye className="w-4 h-4 text-[#B4833E]" />
+            <Eye className="w-4 h-4 text-[#B81862]" />
             <span>Preview Theme</span>
           </a>
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-xs disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B81862] transition shadow-xs disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -223,7 +223,7 @@ export default function AppearancePage() {
       {/* Preset Palettes */}
       <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
         <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#B4833E]" />
+          <Sparkles className="w-4 h-4 text-[#B81862]" />
           Curated Design Palettes
         </h2>
         <p className="text-xs text-[#666059]">
@@ -242,7 +242,7 @@ export default function AppearancePage() {
                 onClick={() => applyPreset(p)}
                 className={`p-4 rounded-xl border text-left transition flex flex-col justify-between ${
                   isSelected
-                    ? "border-[#B4833E] ring-2 ring-[#B4833E]/20 bg-[#FAF8F5]"
+                    ? "border-[#B81862] ring-2 ring-[#B81862]/20 bg-[#FFF8FB]"
                     : "border-[#E8E2D9] hover:border-gray-400 bg-white"
                 }`}
               >
@@ -278,7 +278,7 @@ export default function AppearancePage() {
           {/* Custom Color Tokens */}
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-5">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Palette className="w-4 h-4 text-[#B4833E]" />
+              <Palette className="w-4 h-4 text-[#B81862]" />
               Branding Colors
             </h2>
 
@@ -390,7 +390,7 @@ export default function AppearancePage() {
           {/* Hero Section Customization */}
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-[#B4833E]" />
+              <ImageIcon className="w-4 h-4 text-[#B81862]" />
               Storefront Hero Banner
             </h2>
 
@@ -404,7 +404,7 @@ export default function AppearancePage() {
                 value={heroHeading}
                 onChange={(e) => setHeroHeading(e.target.value)}
                 placeholder="Timeless Masterpieces Designed to Celebrate Your Legacy"
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
 
@@ -417,7 +417,7 @@ export default function AppearancePage() {
                 value={heroSubtitle}
                 onChange={(e) => setHeroSubtitle(e.target.value)}
                 placeholder="Discover certified solitaire diamonds and handcrafted 22K temple gold."
-                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
 
@@ -431,7 +431,7 @@ export default function AppearancePage() {
                   value={heroCtaText}
                   onChange={(e) => setHeroCtaText(e.target.value)}
                   placeholder="Explore Collection"
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
 
@@ -444,7 +444,7 @@ export default function AppearancePage() {
                   value={heroImage}
                   onChange={(e) => setHeroImage(e.target.value)}
                   placeholder="https://images.unsplash.com/..."
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
             </div>
@@ -456,7 +456,7 @@ export default function AppearancePage() {
           {/* Theme Mode Selector */}
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Layout className="w-4 h-4 text-[#B4833E]" />
+              <Layout className="w-4 h-4 text-[#B81862]" />
               Catalogue Layout Theme
             </h2>
 
@@ -471,7 +471,7 @@ export default function AppearancePage() {
                   key={t.id}
                   className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition ${
                     theme === t.id
-                      ? "border-[#B4833E] bg-[#FAF8F5]"
+                      ? "border-[#B81862] bg-[#FFF8FB]"
                       : "border-[#E8E2D9] hover:bg-gray-50"
                   }`}
                 >
@@ -480,7 +480,7 @@ export default function AppearancePage() {
                     name="theme"
                     checked={theme === t.id}
                     onChange={() => setTheme(t.id as CatalogueTheme)}
-                    className="mt-1 text-[#B4833E] focus:ring-[#B4833E]"
+                    className="mt-1 text-[#B81862] focus:ring-[#B81862]"
                   />
                   <div>
                     <span className="text-xs font-bold text-gray-900 block">{t.title}</span>
@@ -495,23 +495,23 @@ export default function AppearancePage() {
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-3">
             <h2 className="text-base font-bold text-[#141414]">Optional Sections</h2>
 
-            <label className="flex items-center justify-between p-3 rounded-xl border border-[#E8E2D9] bg-[#FAF8F5] cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-xl border border-[#E8E2D9] bg-[#FFF8FB] cursor-pointer">
               <span className="text-xs font-bold text-gray-800">Show &quot;About Business&quot;</span>
               <input
                 type="checkbox"
                 checked={showAbout}
                 onChange={(e) => setShowAbout(e.target.checked)}
-                className="w-4 h-4 text-[#B4833E] rounded border-gray-300 focus:ring-[#B4833E]"
+                className="w-4 h-4 text-[#B81862] rounded border-gray-300 focus:ring-[#B81862]"
               />
             </label>
 
-            <label className="flex items-center justify-between p-3 rounded-xl border border-[#E8E2D9] bg-[#FAF8F5] cursor-pointer">
+            <label className="flex items-center justify-between p-3 rounded-xl border border-[#E8E2D9] bg-[#FFF8FB] cursor-pointer">
               <span className="text-xs font-bold text-gray-800">Show &quot;Contact & Location&quot;</span>
               <input
                 type="checkbox"
                 checked={showContact}
                 onChange={(e) => setShowContact(e.target.checked)}
-                className="w-4 h-4 text-[#B4833E] rounded border-gray-300 focus:ring-[#B4833E]"
+                className="w-4 h-4 text-[#B81862] rounded border-gray-300 focus:ring-[#B81862]"
               />
             </label>
           </div>

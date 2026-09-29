@@ -142,7 +142,7 @@ export default function BusinessProfilePage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#B81862]" />
         <span className="text-sm text-gray-500">Loading business settings...</span>
       </div>
     );
@@ -162,7 +162,7 @@ export default function BusinessProfilePage() {
         <button
           type="submit"
           disabled={saving || uploadingLogo}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-xs disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B81862] transition shadow-xs disabled:opacity-50"
         >
           {saving ? (
             <>
@@ -198,7 +198,7 @@ export default function BusinessProfilePage() {
           {/* General Information */}
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-5">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-[#B4833E]" />
+              <Building2 className="w-4 h-4 text-[#B81862]" />
               Basic Information
             </h2>
 
@@ -212,7 +212,7 @@ export default function BusinessProfilePage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
 
@@ -229,7 +229,7 @@ export default function BusinessProfilePage() {
                     required
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}
-                    className="flex-1 px-3 py-2.5 border border-[#D9D2C7] rounded-r-xl text-sm font-mono focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                    className="flex-1 px-3 py-2.5 border border-[#D9D2C7] rounded-r-xl text-sm font-mono focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                   />
                 </div>
               </div>
@@ -244,7 +244,7 @@ export default function BusinessProfilePage() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Briefly describe your heritage, values, and offerings..."
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
           </div>
@@ -252,7 +252,7 @@ export default function BusinessProfilePage() {
           {/* Physical Address & Maps */}
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-[#B4833E]" />
+              <MapPin className="w-4 h-4 text-[#B81862]" />
               Store Location & Address
             </h2>
 
@@ -265,7 +265,7 @@ export default function BusinessProfilePage() {
                 value={street}
                 onChange={(e) => setStreet(e.target.value)}
                 placeholder="42, Heritage Boulevard, Zaveri Bazaar"
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
 
@@ -279,7 +279,7 @@ export default function BusinessProfilePage() {
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   placeholder="Mumbai"
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
               <div>
@@ -291,7 +291,7 @@ export default function BusinessProfilePage() {
                   value={state}
                   onChange={(e) => setState(e.target.value)}
                   placeholder="Maharashtra"
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
               <div>
@@ -303,7 +303,7 @@ export default function BusinessProfilePage() {
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                   placeholder="India"
-                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
             </div>
@@ -317,7 +317,7 @@ export default function BusinessProfilePage() {
                 value={mapsUrl}
                 onChange={(e) => setMapsUrl(e.target.value)}
                 placeholder="https://maps.google.com/?q=..."
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-xs font-mono focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
           </div>
@@ -329,7 +329,7 @@ export default function BusinessProfilePage() {
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-[#141414]">Business Brand Logo</h2>
             <div className="flex flex-col items-center gap-4">
-              <div className="w-24 h-24 rounded-2xl border-2 border-[#E8E2D9] overflow-hidden bg-[#FAF8F5] flex items-center justify-center shadow-xs">
+              <div className="w-24 h-24 rounded-2xl border-2 border-[#E8E2D9] overflow-hidden bg-[#FFF8FB] flex items-center justify-center shadow-xs">
                 {logo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={logo} alt={name} className="w-full h-full object-cover" />
@@ -338,8 +338,8 @@ export default function BusinessProfilePage() {
                 )}
               </div>
 
-              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#D9D2C7] bg-[#FAF8F5] text-xs font-semibold text-gray-700 hover:bg-[#F3EFEA] transition">
-                <Upload className="w-4 h-4 text-[#B4833E]" />
+              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-[#D9D2C7] bg-[#FFF8FB] text-xs font-semibold text-gray-700 hover:bg-[#FDE8F2] transition">
+                <Upload className="w-4 h-4 text-[#B81862]" />
                 <span>{uploadingLogo ? "Uploading..." : "Upload Logo"}</span>
                 <input
                   type="file"
@@ -379,7 +379,7 @@ export default function BusinessProfilePage() {
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder="+919876543210 (with country code)"
-                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-semibold focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-semibold focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
@@ -398,7 +398,7 @@ export default function BusinessProfilePage() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+91 98765 43210"
-                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
             </div>
@@ -414,7 +414,7 @@ export default function BusinessProfilePage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="concierge@store.com"
-                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
             </div>
@@ -430,7 +430,7 @@ export default function BusinessProfilePage() {
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
                   placeholder="https://..."
-                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                  className="w-full pl-9 pr-3 py-2.5 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none"
                 />
               </div>
             </div>
@@ -439,7 +439,7 @@ export default function BusinessProfilePage() {
           {/* Social Channels */}
           <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Share2 className="w-4 h-4 text-[#B4833E]" />
+              <Share2 className="w-4 h-4 text-[#B81862]" />
               Social Channels
             </h2>
 
@@ -452,7 +452,7 @@ export default function BusinessProfilePage() {
                 value={instagram}
                 onChange={(e) => setInstagram(e.target.value)}
                 placeholder="https://instagram.com/..."
-                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
 
@@ -465,7 +465,7 @@ export default function BusinessProfilePage() {
                 value={facebook}
                 onChange={(e) => setFacebook(e.target.value)}
                 placeholder="https://facebook.com/..."
-                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
 
@@ -478,7 +478,7 @@ export default function BusinessProfilePage() {
                 value={youtube}
                 onChange={(e) => setYoutube(e.target.value)}
                 placeholder="https://youtube.com/@..."
-                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B4833E] focus:outline-none"
+                className="w-full px-3.5 py-2 border border-[#D9D2C7] rounded-xl text-xs focus:ring-2 focus:ring-[#B81862] focus:outline-none"
               />
             </div>
           </div>

@@ -69,7 +69,7 @@ export default async function BusinessStorePage({
   // Unpublished Guard
   if (business.catalogueStatus === "unpublished" && !isPreview) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center bg-[#FAF8F5]">
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center bg-[#FFF8FB]">
         <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-6">
           <Clock className="w-8 h-8" />
         </div>
@@ -132,7 +132,7 @@ export default async function BusinessStorePage({
       />
 
       {/* Product Showcase with Live Filters & Search */}
-      <Suspense fallback={<div className="h-96 flex items-center justify-center"><span className="text-[#B4833E] text-sm animate-pulse">Loading products...</span></div>}>
+      <Suspense fallback={<div className="h-96 flex items-center justify-center"><span className="text-[#B81862] text-sm animate-pulse">Loading products...</span></div>}>
         <PublicProductShowcase
           initialProducts={productsObj}
           categories={categoriesObj}
@@ -143,39 +143,39 @@ export default async function BusinessStorePage({
 
       {/* About Us & Heritage Section */}
       {business.catalogueSettings?.showAbout && (
-        <section id="about" className="py-20 bg-[#FAF8F5] border-t border-[#E8E2D9]">
+        <section id="about" className="py-20 bg-[#FFF8FB] dark:bg-[#121212] border-t border-[#E8E2D9] dark:border-[#2a2a2a] transition-colors duration-300">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B4833E] block mb-2">
+            <span className="text-xs font-bold uppercase tracking-[0.25em] text-[#B81862] dark:text-[#d43d8a] block mb-2">
               Legacy of Excellence
             </span>
-            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#141414] tracking-tight mb-6">
+            <h2 className="font-serif text-3xl sm:text-4xl font-bold text-[#141414] dark:text-[#f5f5f5] tracking-tight mb-6">
               About {business.name}
             </h2>
-            <p className="text-base sm:text-lg text-[#666059] leading-relaxed max-w-3xl mx-auto font-light mb-12">
+            <p className="text-base sm:text-lg text-[#666059] dark:text-[#a0a0a0] leading-relaxed max-w-3xl mx-auto font-light mb-12">
               {business.catalogueSettings?.aboutText || business.description}
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-left">
-              <div className="p-6 bg-white rounded-2xl border border-[#E8E2D9] shadow-xs">
-                <ShieldCheck className="w-6 h-6 text-[#B4833E] mb-3" />
-                <h3 className="font-bold text-sm text-[#141414] mb-1">Peerless Authenticity</h3>
-                <p className="text-xs text-[#666059] leading-relaxed">
+              <div className="p-6 bg-white dark:bg-[#1a1a1a] rounded-2xl border border-[#E8E2D9] dark:border-[#2a2a2a] shadow-xs">
+                <ShieldCheck className="w-6 h-6 text-[#B81862] dark:text-[#d43d8a] mb-3" />
+                <h3 className="font-bold text-sm text-[#141414] dark:text-[#f5f5f5] mb-1">Peerless Authenticity</h3>
+                <p className="text-xs text-[#666059] dark:text-[#a0a0a0] leading-relaxed">
                   Every jewel is rigorously inspected, hallmarked, and certified by globally accredited gemological laboratories.
                 </p>
               </div>
 
-              <div className="p-6 bg-white rounded-2xl border border-[#E8E2D9] shadow-xs">
-                <Sparkles className="w-6 h-6 text-[#B4833E] mb-3" />
-                <h3 className="font-bold text-sm text-[#141414] mb-1">Master Karigari</h3>
-                <p className="text-xs text-[#666059] leading-relaxed">
+              <div className="p-6 bg-white dark:bg-[#1a1a1a] rounded-2xl border border-[#E8E2D9] dark:border-[#2a2a2a] shadow-xs">
+                <Sparkles className="w-6 h-6 text-[#B81862] dark:text-[#d43d8a] mb-3" />
+                <h3 className="font-bold text-sm text-[#141414] dark:text-[#f5f5f5] mb-1">Master Karigari</h3>
+                <p className="text-xs text-[#666059] dark:text-[#a0a0a0] leading-relaxed">
                   Sculpted by generational artisans preserving traditional filigree, nakshi repousse, and precision prong settings.
                 </p>
               </div>
 
-              <div className="p-6 bg-white rounded-2xl border border-[#E8E2D9] shadow-xs">
-                <HeartHandshake className="w-6 h-6 text-[#B4833E] mb-3" />
-                <h3 className="font-bold text-sm text-[#141414] mb-1">Personalized Concierge</h3>
-                <p className="text-xs text-[#666059] leading-relaxed">
+              <div className="p-6 bg-white dark:bg-[#1a1a1a] rounded-2xl border border-[#E8E2D9] dark:border-[#2a2a2a] shadow-xs">
+                <HeartHandshake className="w-6 h-6 text-[#B81862] dark:text-[#d43d8a] mb-3" />
+                <h3 className="font-bold text-sm text-[#141414] dark:text-[#f5f5f5] mb-1">Personalized Concierge</h3>
+                <p className="text-xs text-[#666059] dark:text-[#a0a0a0] leading-relaxed">
                   Connect with our jewelry advisors on WhatsApp for customized sizing, customization, and bridal consultations.
                 </p>
               </div>

@@ -50,9 +50,9 @@ export async function POST(request: NextRequest) {
     let business = await Business.findOne({});
     if (!business) {
       business = await Business.create({
-        name: "Royal Jewellers",
+        name: "Dwara Collections",
         slug: "royal-jewellers",
-        email: "contact@royaljewellers.com",
+        email: "contact@dwaracollections.com",
         phone: "+91 98765 43210",
         whatsapp: "+919876543210",
         address: {

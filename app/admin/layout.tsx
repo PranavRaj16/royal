@@ -78,30 +78,27 @@ export default function AdminLayout({
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <aside
-      className={`flex flex-col h-full bg-[var(--surface)] border-r border-[var(--border)] ${
+      className={`flex flex-col h-full bg-[var(--surface)] border-r border-[var(--border)] transition-colors ${
         mobile ? "w-72" : "w-64"
       }`}
     >
       {/* Logo */}
       <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#B4833E] to-[#D4AF37] flex items-center justify-center font-bold text-black text-sm">
-            R
-          </div>
-          <div>
-            <span className="block font-bold text-white text-sm leading-tight">
-              {business?.name || "Royal Jewellers"}
-            </span>
-            <span className="block text-[10px] text-[#B4833E] font-semibold uppercase tracking-wider">
-              Admin Studio
-            </span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="Dwara Collections"
+            className="h-8 w-auto object-contain max-w-[120px]"
+          />
+          <span className="block text-[10px] text-[#B81862] font-semibold uppercase tracking-wider">
+            Admin Studio
+          </span>
         </Link>
         {mobile && (
           <button
             id="close-sidebar-btn"
             onClick={() => setSidebarOpen(false)}
-            className="p-1.5 text-[var(--muted)] hover:text-white rounded-lg hover:bg-[var(--surface-2)] transition"
+            className="p-1.5 text-[var(--muted)] hover:text-[var(--foreground)] rounded-lg hover:bg-[var(--surface-2)] transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -125,14 +122,14 @@ export default function AdminLayout({
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
                 active
-                  ? "bg-[#B4833E]/15 text-[#D4AF37] border border-[#B4833E]/30"
-                  : "text-[var(--muted)] hover:text-white hover:bg-[var(--surface-2)]"
+                  ? "bg-[#B81862]/15 text-[#B81862] dark:text-[#d43d8a] border border-[#B81862]/30"
+                  : "text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]"
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" />
               {item.label}
               {showBadge && (
-                <span className="ml-auto flex items-center justify-center w-5 h-5 rounded-full bg-[#B4833E] text-black text-[10px] font-bold">
+                <span className="ml-auto flex items-center justify-center w-5 h-5 rounded-full bg-[#B81862] text-black text-[10px] font-bold">
                   {pendingRequests > 9 ? "9+" : pendingRequests}
                 </span>
               )}
@@ -145,13 +142,13 @@ export default function AdminLayout({
       </nav>
 
       {/* Footer */}
-      <div className="p-3 border-t border-[var(--border)] space-y-1">
+      <div className="p-3 pb-8 border-t border-[var(--border)] space-y-1">
         <a
           id="view-catalogue-btn"
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-[var(--muted)] hover:text-white hover:bg-[var(--surface-2)] transition"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition"
         >
           <ExternalLink className="w-4 h-4 shrink-0" />
           View Catalogue
@@ -159,7 +156,7 @@ export default function AdminLayout({
         <button
           id="logout-btn"
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 transition"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/10 transition cursor-pointer"
         >
           <LogOut className="w-4 h-4 shrink-0" />
           Sign Out
@@ -169,7 +166,7 @@ export default function AdminLayout({
   );
 
   return (
-    <div className="min-h-screen flex bg-[var(--background)]">
+    <div className="min-h-screen flex bg-[var(--background)] text-[var(--foreground)] transition-colors">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex fixed inset-y-0 left-0 z-30">
         <Sidebar />
@@ -194,32 +191,34 @@ export default function AdminLayout({
       {/* Main */}
       <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-[var(--surface)]/90 backdrop-blur-md border-b border-[var(--border)] h-14 flex items-center px-4 gap-4">
+        <header className="sticky top-0 z-20 bg-[var(--surface)]/90 backdrop-blur-md border-b border-[var(--border)] h-14 flex items-center px-4 gap-4 transition-colors">
           <button
             id="open-sidebar-btn"
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 text-[var(--muted)] hover:text-white rounded-lg hover:bg-[var(--surface-2)] transition"
+            className="lg:hidden p-1.5 text-[var(--muted)] hover:text-[var(--foreground)] rounded-lg hover:bg-[var(--surface-2)] transition"
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex-1">
-            <h1 className="text-sm font-bold text-white capitalize">
+            <h1 className="text-sm font-bold text-[var(--foreground)] capitalize">
               {NAV_ITEMS.find(
                 (n) =>
                   pathname === n.href || pathname.startsWith(n.href + "/")
               )?.label || "Admin"}
             </h1>
           </div>
-          <a
-            id="header-catalogue-btn"
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#B4833E] hover:text-[#D4AF37] transition"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Live Catalogue</span>
-          </a>
+          <div className="flex items-center gap-3">
+            <a
+              id="header-catalogue-btn"
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#B81862] dark:text-[#B81862] hover:text-[#B81862] dark:hover:text-[#d43d8a] transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Live Catalogue</span>
+            </a>
+          </div>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8">

@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       role: string;
       businessId: string;
     } | null = null;
-    let businessName = "Royal Jewellers";
+    let businessName = "Dwara Collections";
     let businessSlug = "royal-jewellers";
 
     try {

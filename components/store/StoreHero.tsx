@@ -23,7 +23,7 @@ export default function StoreHero({
     settings?.heroImage ||
     "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=1920&q=80";
   const ctaText = settings?.heroCtaText || "Explore Collection";
-  const primaryColor = branding?.primaryColor || "#B4833E";
+  const primaryColor = branding?.primaryColor || "#B81862";
 
   return (
     <section className="relative min-h-[70vh] lg:min-h-[82vh] flex items-center justify-center overflow-hidden bg-[#141414]">
@@ -41,7 +41,7 @@ export default function StoreHero({
 
       {/* Hero Content */}
       <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center flex flex-col items-center">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#D4AF37] text-xs font-semibold uppercase tracking-[0.2em] mb-6 shadow-md">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#d43d8a] text-xs font-semibold uppercase tracking-[0.2em] mb-6 shadow-md">
           <Sparkles className="w-3.5 h-3.5" /> High Jewellery &amp; Bespoke Creations
         </div>
 
@@ -49,7 +49,7 @@ export default function StoreHero({
           {heading}
         </h1>
 
-        <p className="mt-6 text-base sm:text-lg lg:text-xl text-[#FAF8F5]/80 max-w-2xl font-light leading-relaxed">
+        <p className="mt-6 text-base sm:text-lg lg:text-xl text-[#FFF8FB]/80 max-w-2xl font-light leading-relaxed">
           {subtitle}
         </p>
 

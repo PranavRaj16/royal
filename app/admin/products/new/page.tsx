@@ -7,7 +7,7 @@ export default function NewProductPage() {
     <Suspense
       fallback={
         <div className="min-h-[50vh] flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#B81862]" />
         </div>
       }
     >

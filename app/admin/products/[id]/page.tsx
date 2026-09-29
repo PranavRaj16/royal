@@ -31,8 +31,8 @@ export default function EditProductPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
-        <span className="text-sm text-gray-500">Loading product details...</span>
+        <Loader2 className="w-8 h-8 animate-spin text-[#B81862]" />
+        <span className="text-sm text-[var(--muted)]">Loading product details...</span>
       </div>
     );
   }
@@ -40,7 +40,7 @@ export default function EditProductPage() {
   if (error || !product) {
     return (
       <div className="p-8 text-center bg-[var(--card)] rounded-2xl border border-[var(--border)] max-w-md mx-auto my-12">
-        <h2 className="text-lg font-bold text-white mb-2">Product Not Found</h2>
+        <h2 className="text-lg font-bold text-[var(--foreground)] mb-2">Product Not Found</h2>
         <p className="text-xs text-[var(--muted)]">{error || "Unable to locate this product."}</p>
       </div>
     );

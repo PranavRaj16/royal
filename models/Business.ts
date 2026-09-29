@@ -67,10 +67,10 @@ const BusinessSchema = new Schema<IBusinessDocument>(
       youtube: { type: String, default: "" },
     },
     branding: {
-      primaryColor: { type: String, default: "#B4833E" }, // Warm Luxury Gold
+      primaryColor: { type: String, default: "#B81862" }, // Dwara Magenta Pink
       secondaryColor: { type: String, default: "#1A1A1A" }, // Deep Charcoal
-      accentColor: { type: String, default: "#D4AF37" }, // Brilliant Gold
-      backgroundColor: { type: String, default: "#FAF8F5" }, // Off-white ivory
+      accentColor: { type: String, default: "#d43d8a" }, // Accent Pink
+      backgroundColor: { type: String, default: "#FFF8FB" }, // Dwara pink-tinted ivory
       textColor: { type: String, default: "#1F1F1F" },
       font: { type: String, default: "Playfair Display" },
       theme: {
@@ -97,7 +97,7 @@ const BusinessSchema = new Schema<IBusinessDocument>(
       showContact: { type: Boolean, default: true },
       aboutText: {
         type: String,
-        default: "With decades of artisanal craftsmanship, Royal Jewellers curates peerless purity and unmatched designs.",
+        default: "With decades of artisanal craftsmanship, Dwara Collections curates peerless purity and unmatched designs.",
       },
     },
     catalogueStatus: {

@@ -60,7 +60,7 @@ export default function PreviewBanner({ businessSlug, isPublished: initialPublis
             type="button"
             onClick={handlePublish}
             disabled={publishing}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#B4833E] text-white font-semibold hover:bg-[#D4AF37] hover:text-black transition"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#B81862] text-white font-semibold hover:bg-[#d43d8a] hover:text-black transition"
           >
             {publishing ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />

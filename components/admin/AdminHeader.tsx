@@ -12,7 +12,7 @@ interface AdminHeaderProps {
 }
 
 export default function AdminHeader({
-  businessName = "Royal Jewellers",
+  businessName = "Dwara Collections",
   businessSlug = "royal-jewellers",
   catalogueStatus = "published",
   onMenuClick,
@@ -51,9 +51,9 @@ export default function AdminHeader({
         <Link
           href={`/store/${businessSlug}`}
           target="_blank"
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#D9D2C7] text-xs font-semibold text-[#141414] hover:bg-[#F3EFEA] hover:border-[#B4833E] transition shadow-xs"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#FFF8FB] border border-[#D9D2C7] text-xs font-semibold text-[#141414] hover:bg-[#FDE8F2] hover:border-[#B81862] transition shadow-xs"
         >
-          <Globe className="w-3.5 h-3.5 text-[#B4833E]" />
+          <Globe className="w-3.5 h-3.5 text-[#B81862]" />
           <span>View Public Store</span>
           <ExternalLink className="w-3 h-3 text-gray-400" />
         </Link>

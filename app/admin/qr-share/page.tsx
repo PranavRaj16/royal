@@ -80,7 +80,7 @@ export default function QrSharePage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#B4833E]" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#B81862]" />
         <span className="text-sm text-gray-500">Generating dynamic QR code...</span>
       </div>
     );
@@ -90,7 +90,7 @@ export default function QrSharePage() {
     <div className="max-w-3xl mx-auto space-y-8 pb-16">
       {/* Header */}
       <div className="text-center sm:text-left">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B4833E]/10 border border-[#B4833E]/20 text-[#B4833E] text-xs font-semibold uppercase tracking-wider mb-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#B81862]/10 border border-[#B81862]/20 text-[#B81862] text-xs font-semibold uppercase tracking-wider mb-2">
           <Sparkles className="w-3.5 h-3.5" /> Instant Customer Access
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-[#141414] tracking-tight">
@@ -105,22 +105,22 @@ export default function QrSharePage() {
       <div className="bg-white border border-[#E8E2D9] rounded-3xl p-8 sm:p-12 shadow-sm text-center flex flex-col items-center">
         {/* Business Badge */}
         <div className="mb-6">
-          <span className="text-xs font-bold uppercase tracking-widest text-[#B4833E] block mb-1">
+          <span className="text-xs font-bold uppercase tracking-widest text-[#B81862] block mb-1">
             Official Digital Store
           </span>
-          <h2 className="text-xl font-bold text-[#141414]">{business?.name || "Royal Jewellers"}</h2>
+          <h2 className="text-xl font-bold text-[#141414]">{business?.name || "Dwara Collections"}</h2>
         </div>
 
         {/* QR Code Canvas */}
         <div
           ref={qrRef}
-          className="p-6 bg-[#FAF8F5] border-2 border-[#E8E2D9] rounded-2xl shadow-inner mb-6 transition hover:shadow-md"
+          className="p-6 bg-[#FFF8FB] border-2 border-[#E8E2D9] rounded-2xl shadow-inner mb-6 transition hover:shadow-md"
         >
           <QRCodeCanvas
             value={catalogueUrl}
             size={240}
             level="H"
-            bgColor="#FAF8F5"
+            bgColor="#FFF8FB"
             fgColor="#141414"
             includeMargin={true}
           />
@@ -131,12 +131,12 @@ export default function QrSharePage() {
         </p>
 
         {/* Link Box */}
-        <div className="w-full max-w-md bg-[#FAF8F5] border border-[#E8E2D9] rounded-xl p-3 flex items-center justify-between gap-3 mb-8">
+        <div className="w-full max-w-md bg-[#FFF8FB] border border-[#E8E2D9] rounded-xl p-3 flex items-center justify-between gap-3 mb-8">
           <span className="text-xs font-mono text-gray-700 truncate">{catalogueUrl}</span>
           <button
             type="button"
             onClick={handleCopyLink}
-            className="px-3 py-1.5 rounded-lg bg-white border border-[#D9D2C7] text-xs font-semibold text-gray-800 hover:bg-[#F3EFEA] transition shrink-0 flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg bg-white border border-[#D9D2C7] text-xs font-semibold text-gray-800 hover:bg-[#FDE8F2] transition shrink-0 flex items-center gap-1.5"
           >
             {copied ? (
               <>
@@ -157,7 +157,7 @@ export default function QrSharePage() {
           <button
             type="button"
             onClick={handleDownloadQr}
-            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-xs"
+            className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B81862] transition shadow-xs"
           >
             <Download className="w-4 h-4" />
             <span>Download PNG</span>
@@ -166,9 +166,9 @@ export default function QrSharePage() {
           <button
             type="button"
             onClick={handleNativeShare}
-            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-[#D9D2C7] text-[#141414] text-xs font-semibold hover:bg-[#FAF8F5] transition shadow-xs"
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white border border-[#D9D2C7] text-[#141414] text-xs font-semibold hover:bg-[#FFF8FB] transition shadow-xs"
           >
-            <Share2 className="w-4 h-4 text-[#B4833E]" />
+            <Share2 className="w-4 h-4 text-[#B81862]" />
             <span>Share Link</span>
           </button>
 
@@ -176,7 +176,7 @@ export default function QrSharePage() {
             href={catalogueUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white border border-[#D9D2C7] text-[#141414] text-xs font-semibold hover:bg-[#FAF8F5] transition shadow-xs"
+            className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white border border-[#D9D2C7] text-[#141414] text-xs font-semibold hover:bg-[#FFF8FB] transition shadow-xs"
             title="Open Store in New Tab"
           >
             <ExternalLink className="w-4 h-4 text-gray-400" />

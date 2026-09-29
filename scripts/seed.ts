@@ -51,17 +51,17 @@ async function seed() {
   ]);
   console.log("Cleared existing database collections.");
 
-  // 1. Create Business: Royal Jewellers
+  // 1. Create Business: Dwara Collections
   const business = await Business.create({
-    name: "Royal Jewellers",
+    name: "Dwara Collections",
     slug: "royal-jewellers",
-    logo: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=300&q=80",
+    logo: "/logo.png",
     description:
-      "Purveyors of bespoke high jewellery since 1984. Specializing in ethically sourced natural solitaires, hand-carved heritage temple gold, and heirloom bridal polki.",
+      "Purveyors of bespoke high jewellery and exquisite collections. Specializing in ethically sourced natural solitaires, hand-carved heritage temple gold, and heirloom bridal polki.",
     phone: "+91 98765 43210",
     whatsapp: "+919876543210",
-    email: "concierge@royaljewellers.com",
-    website: "https://royaljewellers.com",
+    email: "concierge@dwaracollections.com",
+    website: "https://dwaracollections.com",
     address: {
       street: "42, Heritage Boulevard, Zaveri Bazaar",
       city: "Mumbai",
@@ -70,15 +70,15 @@ async function seed() {
       mapsUrl: "https://maps.google.com/?q=Zaveri+Bazaar+Mumbai",
     },
     socialLinks: {
-      instagram: "https://instagram.com/royaljewellers_official",
-      facebook: "https://facebook.com/royaljewellers",
-      youtube: "https://youtube.com/@royaljewellers",
+      instagram: "https://instagram.com/dwaracollections",
+      facebook: "https://facebook.com/dwaracollections",
+      youtube: "https://youtube.com/@dwaracollections",
     },
     branding: {
-      primaryColor: "#B4833E",
+      primaryColor: "#B81862",
       secondaryColor: "#141414",
-      accentColor: "#D4AF37",
-      backgroundColor: "#FAF8F5",
+      accentColor: "#d43d8a",
+      backgroundColor: "#FFF8FB",
       textColor: "#1C1C1C",
       font: "Playfair Display",
       theme: "luxury",
@@ -93,7 +93,7 @@ async function seed() {
       showAbout: true,
       showContact: true,
       aboutText:
-        "Rooted in four decades of uncompromising artistry, Royal Jewellers blends traditional Indian karigari with contemporary avant-garde silhouettes. Every gem is hand-selected and hallmarked to perfection.",
+        "Rooted in four decades of uncompromising artistry, Dwara Collections blends traditional Indian karigari with contemporary avant-garde silhouettes. Every gem is hand-selected and hallmarked to perfection.",
     },
     catalogueStatus: "published",
   });
@@ -130,7 +130,7 @@ async function seed() {
       name: "Gold Jewellery",
       slug: "gold-jewellery",
       description: "22-karat BIS hallmarked temple and antique gold designs crafted by master artisans.",
-      image: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=800&q=80",
+      image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80",
       displayOrder: 3,
     },
     {
@@ -158,7 +158,7 @@ async function seed() {
       name: "Bracelets & Bangles",
       slug: "bracelets-bangles",
       description: "Flexible tennis bracelets, jadau kadas, and openable gold cuffs.",
-      image: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=800&q=80",
+      image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80",
       displayOrder: 7,
     },
   ];
@@ -332,7 +332,7 @@ async function seed() {
       tags: ["Gold", "22K Gold", "Bangles", "Temple Jewellery"],
       images: [
         {
-          url: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+          url: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
           alt: "Antique Gold Kadas",
           isPrimary: true,
           order: 0,
@@ -363,7 +363,7 @@ async function seed() {
       tags: ["Diamond", "Tennis Bracelet", "Classic", "18K Gold"],
       images: [
         {
-          url: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+          url: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
           alt: "Diamond Tennis Bracelet",
           isPrimary: true,
           order: 0,
@@ -517,7 +517,7 @@ async function seed() {
       tags: ["Kasu Mala", "Lakshmi Coin", "Gold Haaram", "22K Gold"],
       images: [
         {
-          url: "https://images.unsplash.com/photo-1611591475836-e822a969bc74?auto=format&fit=crop&w=1200&q=80",
+          url: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=1200&q=80",
           alt: "Lakshmi Coin Haaram",
           isPrimary: true,
           order: 0,

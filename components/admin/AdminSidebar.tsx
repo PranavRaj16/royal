@@ -28,7 +28,7 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({
   businessSlug = "royal-jewellers",
-  businessName = "Royal Jewellers",
+  businessName = "Dwara Collections",
   mobileOpen,
   setMobileOpen,
   onLogout,
@@ -72,26 +72,26 @@ export default function AdminSidebar({
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-[#141414] text-white flex flex-col justify-between border-r border-[#262626] transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-64 bg-[var(--card)] text-[var(--foreground)] flex flex-col justify-between border-r border-[var(--border)] transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Brand Header */}
         <div>
-          <div className="h-18 px-6 flex items-center justify-between border-b border-[#262626]">
+          <div className="h-18 px-6 flex items-center justify-between border-b border-[var(--border)]">
             <Link
               href="/admin/dashboard"
               className="flex items-center gap-3"
               onClick={() => setMobileOpen(false)}
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B4833E] text-black font-bold text-lg flex items-center justify-center shadow-md">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#d43d8a] to-[#B81862] text-black font-bold text-lg flex items-center justify-center shadow-md">
                 R
               </div>
               <div className="overflow-hidden">
-                <span className="font-bold text-sm text-white block truncate tracking-tight">
+                <span className="font-bold text-sm text-[var(--foreground)] block truncate tracking-tight">
                   {businessName}
                 </span>
-                <span className="text-[10px] uppercase font-semibold tracking-wider text-[#D4AF37] block">
+                <span className="text-[10px] uppercase font-semibold tracking-wider text-[#d43d8a] block">
                   Admin Studio
                 </span>
               </div>
@@ -99,7 +99,7 @@ export default function AdminSidebar({
 
             <button
               onClick={() => setMobileOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-white p-1"
+              className="lg:hidden text-[var(--muted)] hover:text-[var(--foreground)] p-1 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -109,7 +109,7 @@ export default function AdminSidebar({
           <nav className="p-4 space-y-6 overflow-y-auto max-h-[calc(100vh-160px)]">
             {navGroups.map((group) => (
               <div key={group.label} className="space-y-1">
-                <div className="px-3 text-[10px] font-bold uppercase tracking-widest text-[#888888] mb-2">
+                <div className="px-3 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] mb-2">
                   {group.label}
                 </div>
                 {group.items.map((item) => {
@@ -122,13 +122,13 @@ export default function AdminSidebar({
                       href={item.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-gray-300 hover:text-white hover:bg-[#222] transition"
+                      className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)] transition"
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4 text-[#D4AF37]" />
+                        <Icon className="w-4 h-4 text-[#d43d8a]" />
                         <span>{item.label}</span>
                       </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-gray-500" />
+                      <ExternalLink className="w-3.5 h-3.5 text-[var(--muted)]" />
                     </a>
                   ) : (
                     <Link
@@ -137,11 +137,11 @@ export default function AdminSidebar({
                       onClick={() => setMobileOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
                         isActive
-                          ? "bg-[#B4833E] text-white shadow-md font-semibold"
-                          : "text-gray-300 hover:text-white hover:bg-[#222]"
+                          ? "bg-[#B81862]/15 text-[#B81862] font-bold border border-[#B81862]/30"
+                          : "text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-2)]"
                       }`}
                     >
-                      <Icon className={`w-4 h-4 ${isActive ? "text-white" : "text-gray-400"}`} />
+                      <Icon className={`w-4 h-4 ${isActive ? "text-[#B81862]" : "text-[var(--muted)]"}`} />
                       <span>{item.label}</span>
                     </Link>
                   );
@@ -152,7 +152,7 @@ export default function AdminSidebar({
         </div>
 
         {/* Footer / Logout */}
-        <div className="p-4 border-t border-[#262626]">
+        <div className="p-4 border-t border-[var(--border)]">
           <button
             type="button"
             onClick={onLogout}

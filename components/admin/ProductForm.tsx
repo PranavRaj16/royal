@@ -301,8 +301,8 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
     return `w-full px-3.5 py-2.5 bg-[var(--background)] border ${
       hasError
         ? "border-red-500/80 ring-2 ring-red-500/20 focus:border-red-500"
-        : "border-[var(--border)] focus:border-[#B4833E] focus:ring-2 focus:ring-[#B4833E]/20"
-    } rounded-xl text-sm text-white placeholder-[#666] focus:outline-none transition`;
+        : "border-[var(--border)] focus:border-[#B81862] focus:ring-2 focus:ring-[#B81862]/20"
+    } rounded-xl text-sm text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none transition`;
   };
 
   const labelClass = "block text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5";
@@ -314,12 +314,12 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
         <div className="flex items-center gap-3">
           <Link
             href="/admin/products"
-            className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-white transition"
+            className="p-2.5 rounded-xl bg-[var(--surface)] border border-[var(--border)] text-[var(--muted)] hover:text-[var(--foreground)] transition cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div>
-            <h1 className="font-serif text-xl sm:text-2xl font-bold text-white tracking-tight">
+            <h1 className="font-serif text-xl sm:text-2xl font-bold text-[var(--foreground)] tracking-tight">
               {isEditMode ? "Edit Product" : "Add Product"}
             </h1>
             <p className="text-xs text-[var(--muted)] mt-0.5">
@@ -357,16 +357,16 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
 
       {/* Global Validation Alert Banner */}
       {errorMessage && (
-        <div className="p-4 rounded-2xl bg-red-950/40 border border-red-500/50 text-red-200 flex items-start gap-3 shadow-xl animate-in fade-in duration-300">
-          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 flex items-start gap-3 shadow-sm animate-in fade-in duration-300">
+          <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div className="flex-1 text-xs sm:text-sm">
-            <span className="font-semibold text-white block mb-0.5">Validation Error</span>
-            <p className="text-red-300">{errorMessage}</p>
+            <span className="font-semibold text-red-800 dark:text-white block mb-0.5">Validation Error</span>
+            <p className="text-red-700 dark:text-red-300">{errorMessage}</p>
           </div>
           <button
             type="button"
             onClick={() => setErrorMessage(null)}
-            className="text-red-400 hover:text-white p-1 transition"
+            className="text-red-500 hover:text-red-700 dark:hover:text-white p-1 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -375,9 +375,9 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
 
       {/* Global Success Alert Banner */}
       {successMessage && (
-        <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-200 flex items-center gap-3 shadow-xl animate-in fade-in duration-300">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
-          <div className="flex-1 text-xs sm:text-sm font-semibold text-white">
+        <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 flex items-center gap-3 shadow-sm animate-in fade-in duration-300">
+          <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+          <div className="flex-1 text-xs sm:text-sm font-semibold text-emerald-800 dark:text-white">
             {successMessage} Redirecting to products catalogue...
           </div>
         </div>
@@ -387,8 +387,8 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-[#B4833E]" />
+            <h2 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-[#B81862]" />
               Product Images
             </h2>
             <p className="text-xs text-[var(--muted)] mt-0.5">
@@ -401,8 +401,8 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
         </div>
 
         {images.length === 0 && (
-          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-xs text-amber-300">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
             <span>No images uploaded yet. Add an image for the best showcase.</span>
           </div>
         )}
@@ -412,7 +412,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
             <div
               key={idx}
               className={`relative aspect-square rounded-xl overflow-hidden border-2 transition group ${
-                img.isPrimary ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/30" : "border-[var(--border)]"
+                img.isPrimary ? "border-[#d43d8a] ring-2 ring-[#d43d8a]/30" : "border-[var(--border)]"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -421,7 +421,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
                 type="button"
                 onClick={() => setPrimaryImage(idx)}
                 className={`absolute top-1.5 left-1.5 p-1 rounded-lg backdrop-blur-md transition ${
-                  img.isPrimary ? "bg-[#D4AF37] text-black font-bold" : "bg-black/60 text-white hover:bg-black"
+                  img.isPrimary ? "bg-[#d43d8a] text-black font-bold" : "bg-black/60 text-white hover:bg-black"
                 }`}
                 title={img.isPrimary ? "Primary cover photo" : "Set as primary cover"}
               >
@@ -430,13 +430,13 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               <button
                 type="button"
                 onClick={() => removeImage(idx)}
-                className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 text-white hover:bg-red-600 backdrop-blur-md transition"
+                className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 text-white hover:bg-red-600 backdrop-blur-md transition cursor-pointer"
                 title="Delete image"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
               {img.isPrimary && (
-                <div className="absolute bottom-0 inset-x-0 bg-[#D4AF37] text-black text-[9px] font-bold uppercase tracking-wider text-center py-0.5">
+                <div className="absolute bottom-0 inset-x-0 bg-[#d43d8a] text-black text-[9px] font-bold uppercase tracking-wider text-center py-0.5">
                   Cover Photo
                 </div>
               )}
@@ -444,13 +444,13 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
           ))}
 
           {/* Upload Button Box */}
-          <label className="aspect-square rounded-xl border-2 border-dashed border-[var(--border)] hover:border-[#B4833E] bg-[var(--surface-2)] flex flex-col items-center justify-center cursor-pointer transition p-3 text-center group">
+          <label className="aspect-square rounded-xl border-2 border-dashed border-[var(--border)] hover:border-[#B81862] bg-[var(--surface-2)] flex flex-col items-center justify-center cursor-pointer transition p-3 text-center group">
             {uploadingImage ? (
-              <Loader2 className="w-6 h-6 text-[#B4833E] animate-spin" />
+              <Loader2 className="w-6 h-6 text-[#B81862] animate-spin" />
             ) : (
               <>
-                <Upload className="w-6 h-6 text-[#B4833E] mb-1 group-hover:scale-110 transition" />
-                <span className="text-[11px] font-semibold text-white">Upload Image</span>
+                <Upload className="w-6 h-6 text-[#B81862] mb-1 group-hover:scale-110 transition" />
+                <span className="text-[11px] font-semibold text-[var(--foreground)]">Upload Image</span>
                 <span className="text-[9px] text-[var(--muted)] mt-0.5">PNG, JPG, WebP</span>
               </>
             )}
@@ -485,7 +485,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               id="add-url-btn"
               type="button"
               onClick={addImageUrl}
-              className="px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--border)] text-white text-xs font-semibold rounded-xl border border-[var(--border)] hover:border-[#B4833E] transition whitespace-nowrap"
+              className="px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold rounded-xl border border-[var(--border)] hover:border-[#B81862] transition whitespace-nowrap"
             >
               Add URL
             </button>
@@ -501,8 +501,8 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
 
       {/* 2. Product Information (Name, Category, Description) */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-bold text-white flex items-center gap-2">
-          <Info className="w-4 h-4 text-[#B4833E]" />
+        <h2 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+          <Info className="w-4 h-4 text-[#B81862]" />
           Product Information
         </h2>
 
@@ -574,8 +574,8 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
 
       {/* 3. Pricing, Quantity & Stock */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-bold text-white flex items-center gap-2">
-          <DollarSign className="w-4 h-4 text-[#B4833E]" />
+        <h2 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-[#B81862]" />
           Pricing &amp; Inventory
         </h2>
 
@@ -672,23 +672,23 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
             type="checkbox"
             checked={showPrice}
             onChange={(e) => setShowPrice(e.target.checked)}
-            className="w-4 h-4 rounded accent-[#D4AF37]"
+            className="w-4 h-4 rounded accent-[#d43d8a]"
           />
-          <span className="text-xs text-white">Show price publicly in store</span>
+          <span className="text-xs text-[var(--foreground)]">Show price publicly in store</span>
         </label>
       </div>
 
       {/* 4. Visibility & Status */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-        <h2 className="text-sm font-bold text-white flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#B4833E]" />
+        <h2 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-[#B81862]" />
           Store Visibility
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] cursor-pointer hover:border-[#B4833E]/50 transition">
+          <label className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] cursor-pointer hover:border-[#B81862]/50 transition">
             <div>
-              <span className="text-xs font-bold text-white block">Published</span>
+              <span className="text-xs font-bold text-[var(--foreground)] block">Published</span>
               <span className="text-[11px] text-[var(--muted)] block">Live and visible in catalogue</span>
             </div>
             <input
@@ -696,13 +696,13 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               type="checkbox"
               checked={isPublished}
               onChange={(e) => setIsPublished(e.target.checked)}
-              className="w-4 h-4 rounded accent-[#D4AF37]"
+              className="w-4 h-4 rounded accent-[#d43d8a]"
             />
           </label>
 
-          <label className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] cursor-pointer hover:border-[#B4833E]/50 transition">
+          <label className="flex items-center justify-between p-3.5 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] cursor-pointer hover:border-[#B81862]/50 transition">
             <div>
-              <span className="text-xs font-bold text-white block">Featured Piece</span>
+              <span className="text-xs font-bold text-[var(--foreground)] block">Featured Piece</span>
               <span className="text-[11px] text-[var(--muted)] block">Highlight on store home page</span>
             </div>
             <input
@@ -710,7 +710,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               type="checkbox"
               checked={isFeatured}
               onChange={(e) => setIsFeatured(e.target.checked)}
-              className="w-4 h-4 rounded accent-[#D4AF37]"
+              className="w-4 h-4 rounded accent-[#d43d8a]"
             />
           </label>
         </div>

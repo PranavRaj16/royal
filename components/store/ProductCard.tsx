@@ -48,13 +48,13 @@ export default function ProductCard({
 
   const cleanWhatsapp = whatsappNumber?.replace(/[^0-9]/g, "") || "919876543210";
   const whatsappEnquiryUrl = `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
-    `Hi ${businessName || "Royal Jewellers"}, I am interested in ${product.name} (SKU: ${product.sku}). Catalogue: ${productPath}`
+    `Hi ${businessName || "Dwara Collections"}, I am interested in ${product.name} (SKU: ${product.sku}). Catalogue: ${productPath}`
   )}`;
 
   return (
-    <div className="group bg-white rounded-2xl border border-[#E8E2D9] overflow-hidden shadow-xs hover:shadow-xl transition-all duration-500 flex flex-col justify-between">
+    <div className="group bg-white dark:bg-[#161616] rounded-2xl border border-[#E8E2D9] dark:border-[#2a2a2a] overflow-hidden shadow-xs hover:shadow-xl dark:hover:border-[#B81862]/50 transition-all duration-500 flex flex-col justify-between">
       {/* Product Image Stage */}
-      <div className="relative aspect-square overflow-hidden bg-[#FAF8F5]">
+      <div className="relative aspect-square overflow-hidden bg-[#FFF8FB] dark:bg-[#1f1f1f]">
         <Link href={productPath}>
           {/* Main Photo */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -68,7 +68,7 @@ export default function ProductCard({
         {/* Badges on Top */}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
           {product.isFeatured && (
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#D4AF37] text-black shadow-xs flex items-center gap-1">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#d43d8a] text-black shadow-xs flex items-center gap-1">
               <Star className="w-3 h-3 fill-black" /> Featured
             </span>
           )}
@@ -78,7 +78,7 @@ export default function ProductCard({
             </span>
           )}
           {product.stockStatus === "made_to_order" && (
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#141414]/80 text-white backdrop-blur-xs">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#141414]/80 dark:bg-black/70 text-white backdrop-blur-xs">
               Bespoke Order
             </span>
           )}
@@ -90,7 +90,7 @@ export default function ProductCard({
             href={whatsappEnquiryUrl}
             target="_blank"
             rel="noreferrer"
-            className="p-2.5 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-700 transition flex items-center justify-center"
+            className="p-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg transition flex items-center justify-center"
             title="Enquire on WhatsApp"
           >
             <MessageCircle className="w-4 h-4 fill-white" />
@@ -101,7 +101,7 @@ export default function ProductCard({
       {/* Product Details Section */}
       <div className="p-4 sm:p-5 flex flex-col flex-1 justify-between">
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-[#B4833E] block mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862] dark:text-[#d43d8a] block mb-1">
             {(typeof product.categoryId === "object" && product.categoryId !== null
               ? (product.categoryId as { name?: string })?.name
               : null) ||
@@ -110,30 +110,30 @@ export default function ProductCard({
           </span>
           <Link
             href={productPath}
-            className="font-serif text-base sm:text-lg font-bold text-[#141414] hover:text-[#B4833E] transition line-clamp-1 block leading-snug"
+            className="font-serif text-base sm:text-lg font-bold text-[#141414] dark:text-[#f5f5f5] hover:text-[#B81862] dark:hover:text-[#d43d8a] transition line-clamp-1 block leading-snug"
           >
             {product.name}
           </Link>
-          <span className="text-[11px] font-mono text-gray-400 block mt-0.5">
+          <span className="text-[11px] font-mono text-[#736E66] dark:text-[#a0a0a0] block mt-0.5">
             SKU: {product.sku}
           </span>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-[#E8E2D9] flex items-center justify-between">
+        <div className="mt-4 pt-3 border-t border-[#E8E2D9] dark:border-[#2a2a2a] flex items-center justify-between">
           <div>
             {product.showPrice ? (
               <div className="flex items-baseline gap-2">
-                <span className="text-base font-bold text-[#141414]">
+                <span className="text-base font-bold text-[#141414] dark:text-[#f5f5f5]">
                   ₹{formatPrice(product.discountPrice || product.price)}
                 </span>
                 {product.discountPrice && (
-                  <span className="text-xs text-gray-400 line-through">
+                  <span className="text-xs text-gray-400 dark:text-gray-500 line-through">
                     ₹{formatPrice(product.price)}
                   </span>
                 )}
               </div>
             ) : (
-              <span className="text-xs font-semibold text-[#B4833E]">
+              <span className="text-xs font-semibold text-[#B81862] dark:text-[#d43d8a]">
                 Price upon enquiry
               </span>
             )}
@@ -141,7 +141,7 @@ export default function ProductCard({
 
           <Link
             href={productPath}
-            className="inline-flex items-center gap-1 text-xs font-bold text-[#141414] group-hover:text-[#B4833E] transition"
+            className="inline-flex items-center gap-1 text-xs font-bold text-[#141414] dark:text-[#f5f5f5] group-hover:text-[#B81862] dark:group-hover:text-[#d43d8a] transition"
           >
             <span>View</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />

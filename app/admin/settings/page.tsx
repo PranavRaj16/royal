@@ -170,7 +170,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-[#B4833E]">Admin Control</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-[#B81862]">Admin Control</span>
         </div>
         <h1 className="text-2xl font-bold text-[#141414] tracking-tight">Admin & Security Settings</h1>
         <p className="text-sm text-[#666059]">
@@ -186,12 +186,12 @@ export default function SettingsPage() {
         >
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center">
-                <Mail className="w-4 h-4 text-[#B4833E]" />
+              <div className="w-8 h-8 rounded-lg bg-[#FFF8FB] border border-[#E8E2D9] flex items-center justify-center">
+                <Mail className="w-4 h-4 text-[#B81862]" />
               </div>
               Admin Email & Profile Credentials
             </h2>
-            <span className="text-[11px] font-semibold text-[#888] bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#E8E2D9]">
+            <span className="text-[11px] font-semibold text-[#888] bg-[#FFF8FB] px-2.5 py-1 rounded-full border border-[#E8E2D9]">
               Authentication
             </span>
           </div>
@@ -217,7 +217,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#B4833E]" />
+                <User className="w-3.5 h-3.5 text-[#B81862]" />
                 Admin Name
               </label>
               <input
@@ -227,13 +227,13 @@ export default function SettingsPage() {
                 value={adminName}
                 onChange={(e) => setAdminName(e.target.value)}
                 placeholder="e.g. Royal Concierge"
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm text-[#141414] bg-white focus:ring-2 focus:ring-[#B4833E] focus:outline-none transition disabled:opacity-60"
+                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm text-[#141414] bg-white focus:ring-2 focus:ring-[#B81862] focus:outline-none transition disabled:opacity-60"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5 flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5 text-[#B4833E]" />
+                <Mail className="w-3.5 h-3.5 text-[#B81862]" />
                 Admin Login Email *
               </label>
               <input
@@ -243,14 +243,14 @@ export default function SettingsPage() {
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
                 placeholder="e.g. admin@royaljewellers.com"
-                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-mono text-[#141414] bg-white focus:ring-2 focus:ring-[#B4833E] focus:outline-none transition disabled:opacity-60"
+                className="w-full px-3.5 py-2.5 border border-[#D9D2C7] rounded-xl text-sm font-mono text-[#141414] bg-white focus:ring-2 focus:ring-[#B81862] focus:outline-none transition disabled:opacity-60"
               />
             </div>
           </div>
 
           <div className="pt-1 border-t border-[#F0EBE3]">
             <label className="block text-xs font-semibold uppercase text-gray-600 mb-1.5 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-[#B4833E]" />
+              <Lock className="w-3.5 h-3.5 text-[#B81862]" />
               Confirm with Current Password *
             </label>
             <div className="relative max-w-sm">
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                 value={profilePassword}
                 onChange={(e) => setProfilePassword(e.target.value)}
                 placeholder="Enter current password to confirm"
-                className="w-full px-3.5 py-2.5 pr-10 border border-[#D9D2C7] rounded-xl text-sm text-[#141414] bg-white focus:ring-2 focus:ring-[#B4833E] focus:outline-none transition disabled:opacity-60"
+                className="w-full px-3.5 py-2.5 pr-10 border border-[#D9D2C7] rounded-xl text-sm text-[#141414] bg-white focus:ring-2 focus:ring-[#B81862] focus:outline-none transition disabled:opacity-60"
               />
               <button
                 type="button"
@@ -277,7 +277,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={savingProfile || loadingInitial}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-sm disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B81862] transition shadow-sm disabled:opacity-50"
             >
               {savingProfile ? (
                 <>
@@ -301,12 +301,12 @@ export default function SettingsPage() {
         >
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center">
-                <KeyRound className="w-4 h-4 text-[#B4833E]" />
+              <div className="w-8 h-8 rounded-lg bg-[#FFF8FB] border border-[#E8E2D9] flex items-center justify-center">
+                <KeyRound className="w-4 h-4 text-[#B81862]" />
               </div>
               Change Admin Password
             </h2>
-            <span className="text-[11px] font-semibold text-[#888] bg-[#FAF8F5] px-2.5 py-1 rounded-full border border-[#E8E2D9]">
+            <span className="text-[11px] font-semibold text-[#888] bg-[#FFF8FB] px-2.5 py-1 rounded-full border border-[#E8E2D9]">
               Password Reset
             </span>
           </div>
@@ -341,7 +341,7 @@ export default function SettingsPage() {
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 pr-9 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none transition"
+                  className="w-full px-3.5 py-2.5 pr-9 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none transition"
                 />
                 <button
                   type="button"
@@ -364,7 +364,7 @@ export default function SettingsPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 pr-9 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none transition"
+                  className="w-full px-3.5 py-2.5 pr-9 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none transition"
                 />
                 <button
                   type="button"
@@ -387,7 +387,7 @@ export default function SettingsPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 pr-9 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B4833E] focus:outline-none transition"
+                  className="w-full px-3.5 py-2.5 pr-9 border border-[#D9D2C7] rounded-xl text-sm focus:ring-2 focus:ring-[#B81862] focus:outline-none transition"
                 />
                 <button
                   type="button"
@@ -404,7 +404,7 @@ export default function SettingsPage() {
             <button
               type="submit"
               disabled={savingPassword}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B4833E] transition shadow-sm disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#141414] text-white text-xs font-semibold hover:bg-[#B81862] transition shadow-sm disabled:opacity-50"
             >
               {savingPassword ? (
                 <>
@@ -425,14 +425,14 @@ export default function SettingsPage() {
         <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Database className="w-4 h-4 text-[#B4833E]" />
+              <Database className="w-4 h-4 text-[#B81862]" />
               MongoDB & System Connection Status
             </h2>
             <button
               type="button"
               onClick={checkDbStatus}
               disabled={testingDb}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D9D2C7] bg-[#FAF8F5] text-xs font-semibold text-gray-700 hover:border-[#B4833E] hover:text-[#B4833E] transition disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D9D2C7] bg-[#FFF8FB] text-xs font-semibold text-gray-700 hover:border-[#B81862] hover:text-[#B81862] transition disabled:opacity-50"
             >
               {testingDb ? (
                 <>
@@ -477,7 +477,7 @@ export default function SettingsPage() {
                     : "MongoDB Atlas is unreachable. Changes are saved directly to local persistent disk (data/local_db.json)."}
                 </p>
                 {!dbStatus.connected && (
-                  <p className="text-[11px] text-[#B4833E] font-medium pt-1">
+                  <p className="text-[11px] text-[#B81862] font-medium pt-1">
                     Tip: Add 0.0.0.0/0 to your MongoDB Atlas Network Access whitelist at cloud.mongodb.com to connect directly.
                   </p>
                 )}
@@ -486,7 +486,7 @@ export default function SettingsPage() {
           )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-1">
-            <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9]">
+            <div className="p-3.5 rounded-xl bg-[#FFF8FB] border border-[#E8E2D9]">
               <span className="text-gray-400 block mb-1">Database Engine</span>
               <span className="font-bold text-gray-900 flex items-center gap-1.5">
                 <Server className="w-3.5 h-3.5 text-emerald-600" />
@@ -494,18 +494,18 @@ export default function SettingsPage() {
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9]">
+            <div className="p-3.5 rounded-xl bg-[#FFF8FB] border border-[#E8E2D9]">
               <span className="text-gray-400 block mb-1">Auth & Token Protocol</span>
               <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-[#B4833E]" />
+                <Shield className="w-3.5 h-3.5 text-[#B81862]" />
                 JWT (Edge JOSE + Bcrypt)
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9]">
+            <div className="p-3.5 rounded-xl bg-[#FFF8FB] border border-[#E8E2D9]">
               <span className="text-gray-400 block mb-1">Disk Persistence Fallback</span>
               <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-[#B4833E]" />
+                <Database className="w-3.5 h-3.5 text-[#B81862]" />
                 data/local_db.json (Active)
               </span>
             </div>

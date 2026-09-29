@@ -21,16 +21,16 @@ export async function GET() {
     if (!business) {
       business = {
         _id: session.businessId,
-        name: "Royal Jewellers",
+        name: "Dwara Collections",
         slug: "royal-jewellers",
-        email: "concierge@royaljewellers.com",
+        email: "concierge@dwaracollections.com",
         phone: "+91 98765 43210",
         whatsapp: "+919876543210",
         catalogueStatus: "published",
         branding: {
-          primaryColor: "#B4833E",
+          primaryColor: "#B81862",
           secondaryColor: "#141414",
-          accentColor: "#D4AF37",
+          accentColor: "#d43d8a",
           theme: "luxury",
         },
       };

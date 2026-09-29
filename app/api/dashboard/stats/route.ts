@@ -60,7 +60,7 @@ export async function GET() {
         draftProducts: DEMO_PRODUCTS.filter((p) => !p.isPublished).length,
         totalCategories: DEMO_CATEGORIES.length,
         catalogueStatus: "published",
-        businessName: "Royal Jewellers",
+        businessName: "Dwara Collections",
         businessSlug: "royal-jewellers",
         lastUpdated: new Date().toISOString(),
       },
@@ -68,7 +68,7 @@ export async function GET() {
       featuredProducts: DEMO_PRODUCTS.filter((p) => p.isFeatured).slice(0, 5),
       business: {
         _id: "650000000000000000000002",
-        name: "Royal Jewellers",
+        name: "Dwara Collections",
         slug: "royal-jewellers",
         catalogueStatus: "published",
       },
