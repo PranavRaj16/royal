@@ -22,6 +22,7 @@ export interface IDemoProduct {
   price: number;
   discountPrice?: number | null;
   showPrice: boolean;
+  showQuantity?: boolean;
   quantity: number;
   stockStatus: "in_stock" | "out_of_stock" | "made_to_order";
   isFeatured: boolean;
@@ -37,18 +38,18 @@ const DATA_FILE = path.join(DATA_DIR, "local_db.json");
 
 let isInitialized = false;
 
-function ensureLoaded() {
-  if (isInitialized) return;
+export function ensureLoaded(force: boolean = false) {
+  if (isInitialized && !force) return;
   isInitialized = true;
   try {
     if (fs.existsSync(DATA_FILE)) {
       const raw = fs.readFileSync(DATA_FILE, "utf-8");
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+      if (Array.isArray(parsed.categories)) {
         DEMO_CATEGORIES.length = 0;
         DEMO_CATEGORIES.push(...parsed.categories);
       }
-      if (Array.isArray(parsed.products) && parsed.products.length > 0) {
+      if (Array.isArray(parsed.products)) {
         DEMO_PRODUCTS.length = 0;
         DEMO_PRODUCTS.push(...parsed.products);
       }
@@ -60,6 +61,16 @@ function ensureLoaded() {
   } catch (err) {
     console.warn("[local_db] Failed to load local_db.json:", err);
   }
+}
+
+export function getDemoCategories(): IDemoCategory[] {
+  ensureLoaded(true);
+  return DEMO_CATEGORIES;
+}
+
+export function getDemoProducts(): IDemoProduct[] {
+  ensureLoaded(true);
+  return DEMO_PRODUCTS;
 }
 
 export function savePersistedData() {
@@ -487,6 +498,7 @@ export function addDemoProduct(product: Partial<IDemoProduct>): IDemoProduct {
     price: product.price || 0,
     discountPrice: product.discountPrice ?? null,
     showPrice: product.showPrice ?? true,
+    showQuantity: product.showQuantity ?? true,
     quantity: product.quantity ?? 5,
     stockStatus: product.stockStatus || "in_stock",
     isFeatured: !!product.isFeatured,
@@ -513,20 +525,37 @@ export function addDemoProduct(product: Partial<IDemoProduct>): IDemoProduct {
 }
 
 export function addDemoCategory(category: Partial<IDemoCategory>): IDemoCategory {
+  ensureLoaded();
   const { getCategoryPlaceholder } = require("@/lib/placeholderImages");
   const defaultCover = getCategoryPlaceholder(category.name || category.slug);
 
+  const existingIndex = DEMO_CATEGORIES.findIndex(
+    (c) =>
+      (category._id && c._id === category._id) ||
+      (category.slug && c.slug.toLowerCase() === category.slug.toLowerCase()) ||
+      (category.name && c.name.toLowerCase() === category.name.toLowerCase())
+  );
+
+  if (existingIndex !== -1) {
+    DEMO_CATEGORIES[existingIndex] = {
+      ...DEMO_CATEGORIES[existingIndex],
+      ...category,
+      _id: category._id || DEMO_CATEGORIES[existingIndex]._id,
+    };
+    savePersistedData();
+    return DEMO_CATEGORIES[existingIndex];
+  }
+
   const newCat: IDemoCategory = {
-    _id: "65" + Math.random().toString(16).substring(2, 10).padEnd(22, "0"),
+    _id: category._id || ("65" + Math.random().toString(16).substring(2, 10).padEnd(22, "0")),
     name: category.name || "New Category",
-    slug: (category.name || "new-category").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    slug: (category.slug || category.name || "new-category").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     description: category.description || "",
     image: category.image || defaultCover,
     displayOrder: category.displayOrder || DEMO_CATEGORIES.length + 1,
     isActive: category.isActive !== false,
   };
 
-  ensureLoaded();
   DEMO_CATEGORIES.push(newCat);
   savePersistedData();
   return newCat;
@@ -573,16 +602,52 @@ export function updateDemoCategory(id: string, updates: Partial<IDemoCategory>):
 }
 
 export function deleteDemoCategory(id: string): boolean {
-  ensureLoaded();
-  const index = DEMO_CATEGORIES.findIndex((c) => c._id === id || c.slug === id);
-  if (index === -1) return false;
-  DEMO_CATEGORIES.splice(index, 1);
+  ensureLoaded(true);
+  const rawId = String(id).trim();
+  let decoded = rawId;
+  try {
+    decoded = decodeURIComponent(rawId).trim();
+  } catch {}
+  const rawLower = rawId.toLowerCase();
+  const decodedLower = decoded.toLowerCase();
+  const rawAlpha = rawLower.replace(/[^a-z0-9]/g, "");
+  const decodedAlpha = decodedLower.replace(/[^a-z0-9]/g, "");
+
+  const initialLen = DEMO_CATEGORIES.length;
+  const filtered = DEMO_CATEGORIES.filter((c) => {
+    const cId = String(c._id || "").trim();
+    const cSlug = String(c.slug || "").trim().toLowerCase();
+    const cName = String(c.name || "").trim().toLowerCase();
+    const cSlugAlpha = cSlug.replace(/[^a-z0-9]/g, "");
+    const cNameAlpha = cName.replace(/[^a-z0-9]/g, "");
+
+    const isMatch =
+      cId === rawId ||
+      cId === decoded ||
+      cSlug === rawLower ||
+      cSlug === decodedLower ||
+      cName === rawLower ||
+      cName === decodedLower ||
+      (rawAlpha.length > 2 && (cSlugAlpha === rawAlpha || cNameAlpha === rawAlpha)) ||
+      (decodedAlpha.length > 2 && (cSlugAlpha === decodedAlpha || cNameAlpha === decodedAlpha));
+
+    return !isMatch;
+  });
+
+  if (filtered.length === initialLen) return false;
+
+  DEMO_CATEGORIES.length = 0;
+  DEMO_CATEGORIES.push(...filtered);
+  DEMO_CATEGORIES.forEach((cat, idx) => {
+    cat.displayOrder = idx + 1;
+  });
   savePersistedData();
   return true;
 }
 
 export interface IDemoRequest {
   _id: string;
+  orderId?: string;
   businessId?: string;
   productId?: string;
   productName: string;
@@ -599,6 +664,7 @@ export interface IDemoRequest {
 export const DEMO_REQUESTS: IDemoRequest[] = [
   {
     _id: "req-1",
+    orderId: "DW-ORD-881204",
     productName: "The Imperial Nizam Emerald & Solitaire Necklace",
     productSku: "RJ-NC-001",
     visitorName: "Ananya Deshmukh",
@@ -611,6 +677,7 @@ export const DEMO_REQUESTS: IDemoRequest[] = [
   },
   {
     _id: "req-2",
+    orderId: "DW-ORD-881205",
     productName: "Royal Jaipur Navratna Choker",
     productSku: "RJ-NC-002",
     visitorName: "Vikram Singhania",
@@ -625,9 +692,14 @@ export const DEMO_REQUESTS: IDemoRequest[] = [
 
 export function createDemoRequest(data: Omit<IDemoRequest, "_id" | "createdAt" | "updatedAt">): IDemoRequest {
   ensureLoaded();
+  const timestamp = Date.now().toString().slice(-6);
+  const rand = Math.floor(10 + Math.random() * 90);
+  const generatedOrderId = data.orderId || `DW-ORD-${timestamp}${rand}`;
+
   const newReq: IDemoRequest = {
     _id: "req-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
     ...data,
+    orderId: generatedOrderId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };

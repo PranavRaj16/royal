@@ -12,6 +12,7 @@ import {
   ExternalLink,
   ChevronRight,
   Inbox,
+  MessageCircle,
   Settings,
 } from "lucide-react";
 import { IBusiness } from "@/types";
@@ -19,7 +20,8 @@ import { IBusiness } from "@/types";
 const NAV_ITEMS = [
   { href: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/products", icon: Package, label: "Products" },
-  { href: "/admin/requests", icon: Inbox, label: "Requests" },
+  { href: "/admin/requests", icon: Inbox, label: "Orders" },
+  { href: "/admin/whatsapp-requests", icon: MessageCircle, label: "Requests" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 
@@ -52,21 +54,43 @@ export default function AdminLayout({
       .catch(() => router.push("/admin/login"));
   }, [isLoginPage, router]);
 
-  // Poll pending request count every 30 seconds
+  // Poll pending request count and reactively update on events/navigation
   useEffect(() => {
     if (isLoginPage) return;
     const fetchCount = () => {
-      fetch("/api/admin/requests?status=pending&limit=1")
+      fetch("/api/admin/requests?limit=1", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      })
         .then((r) => r.json())
         .then((d) => {
-          if (d.success) setPendingRequests(d.total || 0);
+          if (d.success) {
+            const count = typeof d.pendingCount === "number" ? d.pendingCount : (d.total || 0);
+            setPendingRequests(count);
+          }
         })
         .catch(() => {});
     };
     fetchCount();
-    const interval = setInterval(fetchCount, 30000);
-    return () => clearInterval(interval);
-  }, [isLoginPage]);
+    const interval = setInterval(fetchCount, 5000);
+    const onRequestsUpdated = (e: Event) => {
+      const customEvent = e as CustomEvent<{ pendingCount?: number }>;
+      if (typeof customEvent.detail?.pendingCount === "number") {
+        const count = customEvent.detail.pendingCount;
+        setTimeout(() => setPendingRequests(count), 0);
+      } else {
+        setTimeout(() => fetchCount(), 0);
+      }
+    };
+    const onFocus = () => fetchCount();
+    window.addEventListener("rj:requests-updated", onRequestsUpdated);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("rj:requests-updated", onRequestsUpdated);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [isLoginPage, pathname]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
@@ -117,7 +141,7 @@ export default function AdminLayout({
           return (
             <Link
               key={item.href}
-              id={`nav-${item.label.toLowerCase()}-btn`}
+              id={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}-btn`}
               href={item.href}
               onClick={() => setSidebarOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition ${

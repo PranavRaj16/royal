@@ -224,7 +224,9 @@ export default function ProductDetailView({
                     <span className="w-2 h-2 rounded-full bg-current" />
                     <span>
                       {product.stockStatus === "in_stock"
-                        ? `In Stock (${product.quantity ?? 10} pieces available)`
+                        ? product.showQuantity !== false
+                          ? `In Stock (${product.quantity ?? 10} pieces available)`
+                          : "In Stock"
                         : product.stockStatus === "made_to_order"
                         ? "Handcrafted Made-to-Order"
                         : "Currently Reserved"}

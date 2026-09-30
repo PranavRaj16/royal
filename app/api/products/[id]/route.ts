@@ -16,16 +16,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     try {
       await connectToDatabase();
-      const product = await Product.findOne({
-        _id: id,
-        businessId: session.businessId,
-      }).populate("categoryId", "name slug");
+      const isObjectId = mongoose.Types.ObjectId.isValid(id);
+      let product = null;
+
+      if (isObjectId) {
+        product = await Product.findById(id).populate("categoryId", "name slug");
+      }
+      if (!product) {
+        product = await Product.findOne({
+          $or: [{ slug: id }, { sku: id }],
+        }).populate("categoryId", "name slug");
+      }
 
       if (product) {
         return NextResponse.json({ success: true, product });
       }
-    } catch {
-      // Fall through to memory store
+    } catch (dbErr) {
+      console.warn("GET /api/products/[id] DB error:", dbErr);
     }
 
     const { getDemoProductById } = await import("@/lib/demoData");
@@ -68,11 +75,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
       await connectToDatabase();
 
+      const isObjectId = mongoose.Types.ObjectId.isValid(id);
+
       if (body.slug) {
         const existing = await Product.findOne({
-          businessId: session.businessId,
           slug: body.slug,
-          _id: { $ne: id },
+          _id: isObjectId ? { $ne: new mongoose.Types.ObjectId(id) } : { $ne: id },
         });
         if (existing) {
           return NextResponse.json(
@@ -89,7 +97,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         } else {
           const CategoryModel = mongoose.models.Category || (await import("@/models")).Category;
           const foundCat = await CategoryModel.findOne({
-            businessId: session.businessId,
             $or: [{ slug: categoryIdToSet }, { name: categoryIdToSet }],
           });
           if (foundCat) {
@@ -98,8 +105,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         }
       }
 
+      const query = isObjectId
+        ? { _id: new mongoose.Types.ObjectId(id) }
+        : { $or: [{ slug: id }, { sku: id }] };
+
       const updated = await Product.findOneAndUpdate(
-        { _id: id, businessId: session.businessId },
+        query,
         { $set: updateData },
         { new: true, runValidators: true }
       ).populate("categoryId", "name slug");
@@ -107,8 +118,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       if (updated) {
         return NextResponse.json({ success: true, product: updated });
       }
-    } catch {
-      // Fall through to memory store
+    } catch (dbErr) {
+      console.warn("PUT /api/products/[id] DB error:", dbErr);
     }
 
     const { updateDemoProduct, DEMO_CATEGORIES } = await import("@/lib/demoData");
@@ -144,16 +155,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     try {
       await connectToDatabase();
-      const deleted = await Product.findOneAndDelete({
-        _id: id,
-        businessId: session.businessId,
-      });
+      const isObjectId = mongoose.Types.ObjectId.isValid(id);
+      let deleted = null;
+
+      if (isObjectId) {
+        deleted = await Product.findByIdAndDelete(id);
+      }
+      if (!deleted) {
+        deleted = await Product.findOneAndDelete({
+          $or: [{ slug: id }, { sku: id }],
+        });
+      }
 
       if (deleted) {
         return NextResponse.json({ success: true, message: "Product deleted successfully" });
       }
-    } catch {
-      // Fall through to memory store
+    } catch (dbErr) {
+      console.warn("DELETE /api/products/[id] DB error:", dbErr);
     }
 
     const { deleteDemoProduct } = await import("@/lib/demoData");

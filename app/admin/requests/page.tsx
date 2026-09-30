@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   InboxIcon,
   Phone,
@@ -19,6 +19,7 @@ import {
   X,
   AlertCircle,
   ShoppingBag,
+  Check,
 } from "lucide-react";
 
 interface ItemRequest {
@@ -46,15 +47,129 @@ interface OrderGroup {
 }
 
 const STATUS_CONFIG = {
-  pending: { label: "Pending", color: "text-amber-600 bg-amber-50 border-amber-200", dot: "bg-amber-500", icon: Clock },
-  contacted: { label: "Contacted", color: "text-blue-600 bg-blue-50 border-blue-200", dot: "bg-blue-500", icon: Phone },
-  fulfilled: { label: "Fulfilled", color: "text-emerald-600 bg-emerald-50 border-emerald-200", dot: "bg-emerald-500", icon: CheckCircle2 },
-  cancelled: { label: "Cancelled", color: "text-red-600 bg-red-50 border-red-200", dot: "bg-red-500", icon: XCircle },
+  pending: {
+    label: "Pending",
+    actionLabel: "Mark Pending",
+    color: "text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30",
+    dot: "bg-amber-500 shadow-sm shadow-amber-500/50",
+    icon: Clock,
+  },
+  contacted: {
+    label: "Contacted",
+    actionLabel: "Mark Contacted",
+    color: "text-blue-700 dark:text-blue-300 bg-blue-500/10 border-blue-500/30",
+    dot: "bg-blue-500 shadow-sm shadow-blue-500/50",
+    icon: Phone,
+  },
+  fulfilled: {
+    label: "Fulfilled",
+    actionLabel: "Mark Fulfilled",
+    color: "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+    dot: "bg-emerald-500 shadow-sm shadow-emerald-500/50",
+    icon: CheckCircle2,
+  },
+  cancelled: {
+    label: "Cancelled",
+    actionLabel: "Mark Cancelled",
+    color: "text-rose-700 dark:text-rose-300 bg-rose-500/10 border-rose-500/30",
+    dot: "bg-rose-500 shadow-sm shadow-rose-500/50",
+    icon: XCircle,
+  },
 };
+
+function StatusDropdown({
+  currentStatus,
+  onSelect,
+  isUpdating,
+}: {
+  currentStatus: keyof typeof STATUS_CONFIG;
+  onSelect: (status: string) => void;
+  isUpdating: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const activeCfg = STATUS_CONFIG[currentStatus] || STATUS_CONFIG.pending;
+  const ActiveIcon = activeCfg.icon;
+
+  return (
+    <div className="relative w-full" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => !isUpdating && setIsOpen((prev) => !prev)}
+        disabled={isUpdating}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border transition shadow-xs cursor-pointer disabled:opacity-60 ${activeCfg.color} hover:brightness-95`}
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${activeCfg.dot}`} />
+          <ActiveIcon className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{activeCfg.actionLabel}</span>
+        </div>
+        {isUpdating ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 opacity-70" />
+        ) : (
+          <ChevronDown
+            className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 opacity-70 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 bottom-full sm:bottom-auto sm:top-full mb-1.5 sm:mb-0 sm:mt-1.5 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl z-30 p-1.5 space-y-1 animate-in fade-in-50 zoom-in-95 duration-150 backdrop-blur-md">
+          {(Object.keys(STATUS_CONFIG) as Array<keyof typeof STATUS_CONFIG>).map((statusKey) => {
+            const cfg = STATUS_CONFIG[statusKey];
+            const Icon = cfg.icon;
+            const isCurrent = currentStatus === statusKey;
+            return (
+              <button
+                key={statusKey}
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  if (!isCurrent) onSelect(statusKey);
+                }}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition text-left cursor-pointer ${
+                  isCurrent
+                    ? `${cfg.color} font-bold`
+                    : "text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                  <Icon className="w-3.5 h-3.5 opacity-80" />
+                  <span>{cfg.actionLabel}</span>
+                </div>
+                {isCurrent && <Check className="w-3.5 h-3.5 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function groupRequests(requests: ItemRequest[]): OrderGroup[] {
   const map = new Map<string, OrderGroup>();
   for (const req of requests) {
+    const cleanOrderId =
+      req.orderId || `DW-ORD-${req._id.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
     const key = req.orderId || req._id;
     if (map.has(key)) {
       const group = map.get(key)!;
@@ -63,7 +178,7 @@ function groupRequests(requests: ItemRequest[]): OrderGroup[] {
     } else {
       map.set(key, {
         groupKey: key,
-        orderId: req.orderId,
+        orderId: cleanOrderId,
         visitorName: req.visitorName,
         visitorPhone: req.visitorPhone,
         description: req.description,
@@ -179,6 +294,19 @@ export default function AdminRequestsPage() {
     setTimeout(() => setToastMsg(""), 3500);
   };
 
+  const syncSidebarPendingCount = useCallback((reqList: ItemRequest[]) => {
+    if (typeof window !== "undefined") {
+      setTimeout(() => {
+        const pendingGroups = groupRequests(reqList).filter((g) => g.status === "pending");
+        window.dispatchEvent(
+          new CustomEvent("rj:requests-updated", {
+            detail: { pendingCount: pendingGroups.length },
+          })
+        );
+      }, 0);
+    }
+  }, []);
+
   const fetchRequests = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -188,7 +316,9 @@ export default function AdminRequestsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setRequests(data.requests || []);
+        const list = data.requests || [];
+        setRequests(list);
+        syncSidebarPendingCount(list);
       } else if (!silent) {
         showToast("Failed to load requests", "error");
       }
@@ -198,7 +328,7 @@ export default function AdminRequestsPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [syncSidebarPendingCount]);
 
   // Initial load + periodic silent polling every 10s + window focus
   useEffect(() => {
@@ -229,13 +359,15 @@ export default function AdminRequestsPage() {
       const allOk = results.every((r) => r.ok);
       if (allOk) {
         const itemIds = new Set(group.items.map((i) => String(i._id)));
-        setRequests((prev) =>
-          prev.map((r) =>
+        setRequests((prev) => {
+          const next = prev.map((r) =>
             (group.orderId && r.orderId === group.orderId) || itemIds.has(String(r._id))
               ? { ...r, status: newStatus as ItemRequest["status"] }
               : r
-          )
-        );
+          );
+          syncSidebarPendingCount(next);
+          return next;
+        });
         showToast(`Marked as ${STATUS_CONFIG[newStatus as keyof typeof STATUS_CONFIG]?.label}`);
       } else {
         showToast("Failed to update some items", "error");
@@ -254,12 +386,14 @@ export default function AdminRequestsPage() {
 
     // 1. Optimistic removal from UI immediately
     const idsToRemove = new Set(group.items.map((i) => String(i._id)));
-    setRequests((prev) =>
-      prev.filter((r) => {
+    setRequests((prev) => {
+      const next = prev.filter((r) => {
         if (group.orderId && r.orderId && r.orderId === group.orderId) return false;
         return !idsToRemove.has(String(r._id));
-      })
-    );
+      });
+      syncSidebarPendingCount(next);
+      return next;
+    });
 
     // 2. Perform API delete
     try {
@@ -280,6 +414,9 @@ export default function AdminRequestsPage() {
 
       if (isSuccess) {
         showToast(group.items.length > 1 ? "Order deleted" : "Request deleted");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("rj:requests-updated"));
+        }
       } else {
         showToast("Failed to delete from database", "error");
         // Re-fetch to restore state if delete failed
@@ -302,9 +439,10 @@ export default function AdminRequestsPage() {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
+      (g.orderId && g.orderId.toLowerCase().includes(q)) ||
       g.visitorName.toLowerCase().includes(q) ||
       g.visitorPhone.includes(q) ||
-      g.items.some((i) => i.productName.toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q))
+      g.items.some((i) => i.productName.toLowerCase().includes(q) || (i.description || "").toLowerCase().includes(q) || (i.productSku || "").toLowerCase().includes(q))
     );
   });
 
@@ -333,7 +471,7 @@ export default function AdminRequestsPage() {
     const itemList = group.items
       .map((i) => `- ${i.productName}${i.productSku ? ` (${i.productSku})` : ""} x${i.quantity}`)
       .join("\n");
-    return `Hello ${group.visitorName}, regarding your order:\n${itemList}\nWe would like to follow up with you.`;
+    return `Hello ${group.visitorName},\nRegarding Order Reference: *${group.orderId}*\n\nItems:\n${itemList}\n\nWe would like to connect with you regarding your jewellery request.`;
   };
 
   return (
@@ -361,9 +499,9 @@ export default function AdminRequestsPage() {
         <div>
           <h1 className="font-serif text-2xl font-bold text-[var(--foreground)] tracking-tight flex items-center gap-2.5">
             <InboxIcon className="w-6 h-6 text-[#B81862]" />
-            Customer Orders
+            Orders
           </h1>
-          <p className="text-xs text-[var(--muted)] mt-1">Enquiries from visitors — multi-item carts appear as a single order</p>
+          <p className="text-xs text-[var(--muted)] mt-1">All customer orders — cart requests appear grouped as a single order</p>
         </div>
         <button onClick={() => fetchRequests(false)} disabled={loading} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] text-xs font-semibold text-[var(--muted)] hover:text-[var(--foreground)] transition disabled:opacity-50">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -419,7 +557,7 @@ export default function AdminRequestsPage() {
           <InboxIcon className="w-12 h-12 text-gray-400 mx-auto" />
           <h3 className="font-serif text-lg font-bold text-[var(--foreground)]">No Orders Found</h3>
           <p className="text-xs text-[var(--muted)] max-w-sm mx-auto">
-            {search ? `No orders matched "${search}".` : statusFilter !== "all" ? `No ${STATUS_CONFIG[statusFilter as keyof typeof STATUS_CONFIG]?.label} orders.` : "No customer orders yet. They will appear here when visitors submit requests."}
+            {search ? `No orders matched "${search}".` : statusFilter !== "all" ? `No ${STATUS_CONFIG[statusFilter as keyof typeof STATUS_CONFIG]?.label} orders.` : "No orders yet. They appear here when customers submit enquiries from the catalogue."}
           </p>
         </div>
       ) : (
@@ -436,13 +574,10 @@ export default function AdminRequestsPage() {
                 <div className="px-5 py-3 sm:px-6 border-b border-[var(--border)]/60 flex flex-col sm:flex-row sm:items-center gap-3 justify-between bg-[var(--surface-2)]/40">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <ShoppingBag className="w-4 h-4 text-[#B81862] shrink-0" />
-                    {group.orderId ? (
-                      <span className="font-mono text-[11px] font-bold text-[var(--foreground)] bg-[var(--surface-2)] px-2 py-0.5 rounded border border-[var(--border)]">
-                        Order #{group.orderId.slice(0, 8).toUpperCase()}
-                      </span>
-                    ) : (
-                      <span className="font-mono text-[11px] text-[var(--muted)] bg-[var(--surface-2)] px-2 py-0.5 rounded border border-[var(--border)]">Single Request</span>
-                    )}
+                    <span className="font-mono text-xs font-bold text-[var(--foreground)] bg-[var(--surface-2)] px-2.5 py-1 rounded-lg border border-[var(--border)] flex items-center gap-1.5 shadow-xs">
+                      <span className="text-[#B81862] font-semibold">Order #</span>
+                      <span>{group.orderId}</span>
+                    </span>
                     {isMultiItem && <span className="text-[11px] font-bold text-[#B81862] bg-[#B81862]/10 border border-[#B81862]/20 px-2 py-0.5 rounded-full">{group.items.length} items</span>}
                     <span className="text-[11px] text-[var(--muted)] flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(group.createdAt)}</span>
                   </div>
@@ -509,16 +644,11 @@ export default function AdminRequestsPage() {
                       <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                     </a>
 
-                    <div className="relative w-full">
-                      <select value={group.status} onChange={(e) => updateGroupStatus(group, e.target.value)} disabled={isUpdating} className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl text-xs font-semibold bg-[var(--surface-2)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none focus:border-[#B81862] transition cursor-pointer disabled:opacity-60">
-                        <option value="pending">Mark Pending</option>
-                        <option value="contacted">Mark Contacted</option>
-                        <option value="fulfilled">Mark Fulfilled</option>
-                        <option value="cancelled">Mark Cancelled</option>
-                      </select>
-                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--muted)] pointer-events-none" />
-                      {isUpdating && <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B81862] animate-spin" />}
-                    </div>
+                    <StatusDropdown
+                      currentStatus={group.status}
+                      onSelect={(newStatus) => updateGroupStatus(group, newStatus)}
+                      isUpdating={isUpdating}
+                    />
 
                     <button
                       onClick={() => setPendingDeleteGroup(group)}

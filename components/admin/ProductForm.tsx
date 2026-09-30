@@ -101,6 +101,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
   const [price, setPrice] = useState<number | string>(initialProduct?.price ?? "");
   const [discountPrice, setDiscountPrice] = useState<number | string>(initialProduct?.discountPrice ?? "");
   const [showPrice, setShowPrice] = useState(initialProduct?.showPrice ?? true);
+  const [showQuantity, setShowQuantity] = useState(initialProduct?.showQuantity ?? true);
   const [stockStatus, setStockStatus] = useState<"in_stock" | "out_of_stock" | "made_to_order">(
     initialProduct?.stockStatus || "in_stock"
   );
@@ -402,6 +403,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
       price: Number(price),
       discountPrice: discountPrice ? Number(discountPrice) : null,
       showPrice,
+      showQuantity,
       quantity: Number(quantity) || 0,
       stockStatus,
       images: images.slice(0, MAX_IMAGES),
@@ -871,27 +873,39 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               id="product-stock"
               value={stockStatus}
               onChange={(e) =>
-                setStockStatus(e.target.value as "in_stock" | "out_of_stock" | "made_to_order")
+                setStockStatus(e.target.value as "in_stock" | "made_to_order")
               }
               className={getInputClass()}
             >
               <option value="in_stock">In Stock</option>
               <option value="made_to_order">Made to Order</option>
-              <option value="out_of_stock">Out of Stock</option>
             </select>
           </div>
         </div>
 
-        <label className="flex items-center gap-3 pt-2 cursor-pointer">
-          <input
-            id="show-price-checkbox"
-            type="checkbox"
-            checked={showPrice}
-            onChange={(e) => setShowPrice(e.target.checked)}
-            className="w-4 h-4 rounded accent-[#B81862]"
-          />
-          <span className="text-xs text-[var(--foreground)]">Show price publicly in store</span>
-        </label>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              id="show-price-checkbox"
+              type="checkbox"
+              checked={showPrice}
+              onChange={(e) => setShowPrice(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#B81862]"
+            />
+            <span className="text-xs text-[var(--foreground)]">Show price publicly in store</span>
+          </label>
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              id="show-quantity-checkbox"
+              type="checkbox"
+              checked={showQuantity}
+              onChange={(e) => setShowQuantity(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#B81862]"
+            />
+            <span className="text-xs text-[var(--foreground)]">Show quantity publicly in store</span>
+          </label>
+        </div>
       </div>
 
       {/* 4. Visibility & Status */}

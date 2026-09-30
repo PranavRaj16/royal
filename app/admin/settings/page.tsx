@@ -15,6 +15,10 @@ import {
   EyeOff,
   Lock,
   Sparkles,
+  BellRing,
+  Phone,
+  Send,
+  ExternalLink,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -39,6 +43,29 @@ export default function SettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loadingInitial, setLoadingInitial] = useState(true);
+
+  // Email Notification State
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [emailMessage, setEmailMessage] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+
+  const handleSendTestEmail = async () => {
+    setTestingEmail(true);
+    setEmailMessage(null);
+    setEmailError(null);
+    try {
+      const res = await fetch("/api/admin/test-email", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to send test email.");
+      }
+      setEmailMessage(data.message || "Test order notification sent to Eshmagold@gmail.com!");
+    } catch (err: unknown) {
+      setEmailError(err instanceof Error ? err.message : "Error sending test email.");
+    } finally {
+      setTestingEmail(false);
+    }
+  };
 
   // DB Connection Status State
   const [dbStatus, setDbStatus] = useState<{
@@ -421,96 +448,91 @@ export default function SettingsPage() {
           </div>
         </form>
 
-        {/* ── 3. DATABASE & SYSTEM ENVIRONMENT ── */}
-        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 shadow-xs space-y-4">
+        {/* ── 3. ORDER NOTIFICATION SETTINGS ── */}
+        <div className="bg-white border border-[#E8E2D9] rounded-2xl p-6 sm:p-7 shadow-xs space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2">
-              <Database className="w-4 h-4 text-[#B81862]" />
-              MongoDB & System Connection Status
+            <h2 className="text-base font-bold text-[#141414] flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#FFF8FB] border border-[#E8E2D9] flex items-center justify-center">
+                <BellRing className="w-4 h-4 text-[#B81862]" />
+              </div>
+              Order Request Notifications
             </h2>
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+              Active Channel
+            </span>
+          </div>
+
+          <p className="text-xs text-[#777] leading-relaxed">
+            Instant email alerts are automatically dispatched whenever a customer submits an inquiry or order on the storefront.
+          </p>
+
+          {emailMessage && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 flex items-center gap-2">
+              <Check className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>{emailMessage}</span>
+            </div>
+          )}
+
+          {emailError && (
+            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>{emailError}</span>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase">
+                <Mail className="w-3.5 h-3.5 text-[#B81862]" />
+                Admin Notification Email
+              </div>
+              <div className="text-sm font-bold font-mono text-[#141414]">
+                Eshmagold@gmail.com
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Receives full order details, customer contact & requested items.
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase">
+                <Phone className="w-3.5 h-3.5 text-[#B81862]" />
+                Admin Contact Phone
+              </div>
+              <div className="text-sm font-bold font-mono text-[#141414]">
+                +91 7981935590
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Included in order receipts & customer communication channels.
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-[#F0EBE3] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-xs text-gray-500 max-w-md">
+              Want to test delivery? Click below to send a sample luxury order notification to <strong className="text-gray-800">Eshmagold@gmail.com</strong>.
+            </div>
             <button
               type="button"
-              onClick={checkDbStatus}
-              disabled={testingDb}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#D9D2C7] bg-[#FFF8FB] text-xs font-semibold text-gray-700 hover:border-[#B81862] hover:text-[#B81862] transition disabled:opacity-50"
+              onClick={handleSendTestEmail}
+              disabled={testingEmail}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#FFF8FB] text-[#B81862] border border-[#B81862]/30 text-xs font-semibold hover:bg-[#B81862] hover:text-white transition shadow-xs disabled:opacity-50"
             >
-              {testingDb ? (
+              {testingEmail ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Checking...</span>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Sending Test Email...</span>
                 </>
               ) : (
                 <>
-                  <Server className="w-3.5 h-3.5" />
-                  <span>Test Connection</span>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send Test Email</span>
                 </>
               )}
             </button>
           </div>
-
-          {/* Connection Status Banner */}
-          {dbStatus && (
-            <div
-              className={`p-4 rounded-xl border text-xs leading-relaxed flex items-start gap-3 ${
-                dbStatus.connected
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                  : "bg-amber-50 border-amber-200 text-amber-900"
-              }`}
-            >
-              {dbStatus.connected ? (
-                <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              ) : (
-                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              )}
-              <div className="space-y-1">
-                <div className="font-bold flex items-center gap-2">
-                  <span>{dbStatus.connected ? "MongoDB Atlas Connected" : "Local Disk Storage Active (Offline Mode)"}</span>
-                  <span
-                    className={`inline-block w-2 h-2 rounded-full ${
-                      dbStatus.connected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
-                    }`}
-                  />
-                </div>
-                <p className="text-[11px] text-gray-600">
-                  {dbStatus.connected
-                    ? `Database: ${dbStatus.database} (${dbStatus.host})`
-                    : "MongoDB Atlas is unreachable. Changes are saved directly to local persistent disk (data/local_db.json)."}
-                </p>
-                {!dbStatus.connected && (
-                  <p className="text-[11px] text-[#B81862] font-medium pt-1">
-                    Tip: Add 0.0.0.0/0 to your MongoDB Atlas Network Access whitelist at cloud.mongodb.com to connect directly.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-1">
-            <div className="p-3.5 rounded-xl bg-[#FFF8FB] border border-[#E8E2D9]">
-              <span className="text-gray-400 block mb-1">Database Engine</span>
-              <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                <Server className="w-3.5 h-3.5 text-emerald-600" />
-                MongoDB Atlas / Mongoose
-              </span>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-[#FFF8FB] border border-[#E8E2D9]">
-              <span className="text-gray-400 block mb-1">Auth & Token Protocol</span>
-              <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-[#B81862]" />
-                JWT (Edge JOSE + Bcrypt)
-              </span>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-[#FFF8FB] border border-[#E8E2D9]">
-              <span className="text-gray-400 block mb-1">Disk Persistence Fallback</span>
-              <span className="font-bold text-gray-900 flex items-center gap-1.5">
-                <Database className="w-3.5 h-3.5 text-[#B81862]" />
-                data/local_db.json (Active)
-              </span>
-            </div>
-          </div>
         </div>
+
       </div>
     </div>
   );

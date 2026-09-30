@@ -47,13 +47,54 @@ export async function GET(request: NextRequest) {
         ];
       }
 
-      const [requests, total] = await Promise.all([
+      // Query for total matching filter and pending count
+      const pendingQuery: Record<string, unknown> = { ...query, status: "pending" };
+
+      const [rawRequests, orderGroups, pendingGroups] = await Promise.all([
         ItemRequest.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
-        ItemRequest.countDocuments(query),
+        ItemRequest.aggregate([
+          { $match: query },
+          {
+            $group: {
+              _id: {
+                $cond: [
+                  { $gt: [{ $strLenCP: { $ifNull: ["$orderId", ""] } }, 0] },
+                  "$orderId",
+                  "$_id",
+                ],
+              },
+            },
+          },
+          { $count: "totalOrders" },
+        ]),
+        ItemRequest.aggregate([
+          { $match: pendingQuery },
+          {
+            $group: {
+              _id: {
+                $cond: [
+                  { $gt: [{ $strLenCP: { $ifNull: ["$orderId", ""] } }, 0] },
+                  "$orderId",
+                  "$_id",
+                ],
+              },
+            },
+          },
+          { $count: "totalPending" },
+        ]),
       ]);
 
+      const total = orderGroups[0]?.totalOrders || 0;
+      const pendingCount = pendingGroups[0]?.totalPending || 0;
+
+      const requests = rawRequests.map((r: any) => ({
+        ...r,
+        _id: String(r._id),
+        orderId: r.orderId || `DW-ORD-${String(r._id).slice(-6).toUpperCase()}`,
+      }));
+
       return NextResponse.json(
-        { success: true, requests, total },
+        { success: true, requests, total, pendingCount },
         {
           headers: {
             "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
@@ -63,15 +104,31 @@ export async function GET(request: NextRequest) {
     } catch (dbErr) {
       console.warn("GET /api/admin/requests DB error, serving demo fallback:", dbErr);
       const { DEMO_REQUESTS } = await import("@/lib/demoData");
-      let list = [...DEMO_REQUESTS];
+      let list = DEMO_REQUESTS.map((r) => ({
+        ...r,
+        orderId: r.orderId || `DW-ORD-${r._id.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+      }));
+
+      const pendingList = list.filter((r) => r.status === "pending");
+      const pendingSeen = new Set<string>();
+      for (const r of pendingList) {
+        pendingSeen.add(r.orderId || r._id);
+      }
+      const pendingCount = pendingSeen.size;
+
       if (status && status !== "all") {
         list = list.filter((r) => r.status === status);
+      }
+      const seenOrderIds = new Set<string>();
+      for (const r of list) {
+        seenOrderIds.add(r.orderId || r._id);
       }
       return NextResponse.json(
         {
           success: true,
           requests: list.slice(skip, skip + limit),
-          total: list.length,
+          total: seenOrderIds.size,
+          pendingCount,
           isFallback: true,
         },
         {

@@ -23,6 +23,7 @@ export interface IProductDocument extends mongoose.Document {
   price: number;
   discountPrice?: number;
   showPrice: boolean;
+  showQuantity?: boolean;
   quantity: number;
   stockStatus: "in_stock" | "out_of_stock" | "made_to_order";
   images: IProductImageDoc[];
@@ -64,6 +65,7 @@ const ProductSchema = new Schema<IProductDocument>(
     price: { type: Number, required: true, min: 0 },
     discountPrice: { type: Number, default: null },
     showPrice: { type: Boolean, default: true },
+    showQuantity: { type: Boolean, default: true },
     quantity: { type: Number, default: 10, min: 0 },
     stockStatus: {
       type: String,

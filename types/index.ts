@@ -109,6 +109,7 @@ export interface IProduct {
   price: number;
   discountPrice?: number;
   showPrice: boolean;
+  showQuantity?: boolean;
   quantity?: number;
   stockStatus: StockStatus;
   images: IProductImage[];
@@ -129,4 +130,20 @@ export interface DashboardStats {
   businessName: string;
   businessSlug: string;
   lastUpdated: string | Date;
+}
+
+export interface IItemRequest {
+  _id: string;
+  orderId?: string;
+  businessId?: string;
+  productId?: string;
+  productName: string;
+  productSku?: string;
+  visitorName: string;
+  visitorPhone: string;
+  quantity: number;
+  description?: string;
+  status: "pending" | "contacted" | "fulfilled" | "cancelled";
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }

@@ -13,6 +13,7 @@ import {
   Palette,
   Settings,
   Inbox,
+  MessageCircle,
   LogOut,
   ExternalLink,
   X,
@@ -40,7 +41,8 @@ export default function AdminSidebar({
       label: "OVERVIEW",
       items: [
         { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
-        { label: "Requests", href: "/admin/requests", icon: Inbox },
+        { label: "Orders", href: "/admin/requests", icon: Inbox },
+        { label: "Requests", href: "/admin/whatsapp-requests", icon: MessageCircle },
       ],
     },
     {

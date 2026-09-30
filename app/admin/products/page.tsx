@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useCallback, useMemo } from "react";
+import React, { Suspense, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -22,6 +22,8 @@ import {
   Layers,
   Tag,
   AlertCircle,
+  Upload,
+  ImageIcon,
 } from "lucide-react";
 import { IProduct, ICategory } from "@/types";
 import { getCategoryPlaceholder, getProductPlaceholder } from "@/lib/placeholderImages";
@@ -66,15 +68,19 @@ function ProductsContent() {
   // Action states
   const [actionId, setActionId] = useState<string | null>(null);
   const [deleteProductTarget, setDeleteProductTarget] = useState<IProduct | null>(null);
+  const [productDeleting, setProductDeleting] = useState(false);
   const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<ICategory | null>(null);
+  const [categoryDeleting, setCategoryDeleting] = useState(false);
 
   // Category Modal State
   const [showCatModal, setShowCatModal] = useState(false);
   const [catEditTarget, setCatEditTarget] = useState<ICategory | null>(null);
   const [catForm, setCatForm] = useState<CategoryFormData>(EMPTY_CAT_FORM);
   const [catSaving, setCatSaving] = useState(false);
+  const [catUploading, setCatUploading] = useState(false);
   const [catError, setCatError] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+  const catFileInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -94,7 +100,10 @@ function ProductsContent() {
   // Fetch all products
   const fetchProducts = useCallback(async () => {
     try {
-      const res = await fetch("/api/products");
+      const res = await fetch("/api/products", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       const data = await res.json();
       setProducts(data.products || []);
     } catch (err) {
@@ -105,7 +114,10 @@ function ProductsContent() {
   // Fetch all categories
   const fetchCategories = useCallback(async () => {
     try {
-      const res = await fetch("/api/categories");
+      const res = await fetch("/api/categories", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
       const data = await res.json();
       setCategories(data.categories || []);
     } catch (err) {
@@ -323,6 +335,10 @@ function ProductsContent() {
       result.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sortBy === "name-desc") {
       result.sort((a, b) => b.name.localeCompare(a.name));
+    } else if (sortBy === "qty-desc") {
+      result.sort((a, b) => (b.quantity ?? 0) - (a.quantity ?? 0));
+    } else if (sortBy === "qty-asc") {
+      result.sort((a, b) => (a.quantity ?? 0) - (b.quantity ?? 0));
     } else {
       // newest
       result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -383,13 +399,22 @@ function ProductsContent() {
 
   const confirmDeleteProduct = async () => {
     if (!deleteProductTarget) return;
+    setProductDeleting(true);
     try {
-      await fetch(`/api/products/${deleteProductTarget._id}`, { method: "DELETE" });
-      setDeleteProductTarget(null);
-      await fetchProducts();
-      showToast("Product deleted successfully");
+      const res = await fetch(`/api/products/${deleteProductTarget._id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDeleteProductTarget(null);
+        await fetchProducts();
+        showToast("Product deleted successfully");
+      } else {
+        showToast(data.error || "Failed to delete product");
+      }
     } catch (err) {
       console.error(err);
+      showToast("Error deleting product");
+    } finally {
+      setProductDeleting(false);
     }
   };
 
@@ -416,6 +441,42 @@ function ProductsContent() {
     });
     setCatError("");
     setShowCatModal(true);
+  };
+
+  const handleCatImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    if (file.size > 10 * 1024 * 1024) {
+      setCatError("Image file size exceeds 10MB limit.");
+      return;
+    }
+
+    setCatUploading(true);
+    setCatError("");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) {
+        setCatError(data.error || "Failed to upload image. Please try again.");
+        return;
+      }
+      setCatForm((prev) => ({ ...prev, image: data.url }));
+    } catch {
+      setCatError("Network error while uploading category image.");
+    } finally {
+      setCatUploading(false);
+      if (e.target) {
+        e.target.value = "";
+      }
+    }
   };
 
   const handleSaveCategory = async (e: React.FormEvent) => {
@@ -455,6 +516,17 @@ function ProductsContent() {
       }
 
       setShowCatModal(false);
+      setCatForm(EMPTY_CAT_FORM);
+      if (data.category) {
+        setCategories((prev) => {
+          const catId = data.category._id || data.category.id;
+          const exists = prev.some((c) => c._id === catId || c.slug === data.category.slug);
+          if (exists) {
+            return prev.map((c) => (c._id === catId || c.slug === data.category.slug ? { ...c, ...data.category } : c));
+          }
+          return [...prev, data.category];
+        });
+      }
       await fetchCategories();
       showToast(catEditTarget ? "Category updated!" : "New Category added!");
     } catch {
@@ -466,16 +538,36 @@ function ProductsContent() {
 
   const confirmDeleteCategory = async () => {
     if (!deleteCategoryTarget) return;
+    const target = deleteCategoryTarget;
+    const targetId = target._id || target.slug;
+    setCategoryDeleting(true);
+
+    // Optimistically remove from state immediately
+    setCategories((prev) =>
+      prev.filter((c) => c._id !== target._id && c.slug !== target.slug && c.name !== target.name)
+    );
+
     try {
-      await fetch(`/api/categories/${deleteCategoryTarget._id}`, { method: "DELETE" });
-      setDeleteCategoryTarget(null);
-      await fetchCategories();
-      if (selectedFolderId === deleteCategoryTarget._id) {
-        setParam("category", null);
+      const res = await fetch(`/api/categories/${encodeURIComponent(targetId)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setDeleteCategoryTarget(null);
+        if (selectedFolderId === target._id || selectedFolderId === target.slug) {
+          setParam("category", null);
+        }
+        await fetchCategories();
+        await fetchProducts();
+        showToast("Category folder deleted");
+      } else {
+        showToast(data.error || "Failed to delete category");
+        await fetchCategories();
       }
-      showToast("Category folder deleted");
     } catch (err) {
       console.error(err);
+      showToast("Error deleting category");
+      await fetchCategories();
+    } finally {
+      setCategoryDeleting(false);
     }
   };
 
@@ -911,7 +1003,6 @@ function ProductsContent() {
                   <option value="all" className="bg-[var(--surface)] text-[var(--foreground)]">All Stock</option>
                   <option value="in_stock" className="bg-[var(--surface)] text-[var(--foreground)]">In Stock</option>
                   <option value="made_to_order" className="bg-[var(--surface)] text-[var(--foreground)]">Made to Order</option>
-                  <option value="out_of_stock" className="bg-[var(--surface)] text-[var(--foreground)]">Out of Stock</option>
                 </select>
 
                 {/* Publish status */}
@@ -935,6 +1026,8 @@ function ProductsContent() {
                   <option value="oldest" className="bg-[var(--surface)] text-[var(--foreground)]">Oldest First</option>
                   <option value="price-desc" className="bg-[var(--surface)] text-[var(--foreground)]">Price: High to Low</option>
                   <option value="price-asc" className="bg-[var(--surface)] text-[var(--foreground)]">Price: Low to High</option>
+                  <option value="qty-desc" className="bg-[var(--surface)] text-[var(--foreground)]">Quantity: High to Low</option>
+                  <option value="qty-asc" className="bg-[var(--surface)] text-[var(--foreground)]">Quantity: Low to High</option>
                   <option value="name-asc" className="bg-[var(--surface)] text-[var(--foreground)]">Name: A to Z</option>
                 </select>
 
@@ -945,24 +1038,24 @@ function ProductsContent() {
                     onClick={() => setViewMode("list")}
                     className={`p-1.5 rounded-lg transition ${
                       viewMode === "list"
-                        ? "bg-[#B81862] text-black shadow-xs font-bold"
+                        ? "bg-[#B81862] text-white shadow-xs font-bold"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                     title="Table View"
                   >
-                    <List className="w-4 h-4" />
+                    <List className="w-4 h-4 text-current" />
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewMode("grid")}
                     className={`p-1.5 rounded-lg transition ${
                       viewMode === "grid"
-                        ? "bg-[#B81862] text-black shadow-xs font-bold"
+                        ? "bg-[#B81862] text-white shadow-xs font-bold"
                         : "text-[var(--muted)] hover:text-[var(--foreground)]"
                     }`}
                     title="Grid View"
                   >
-                    <LayoutGrid className="w-4 h-4" />
+                    <LayoutGrid className="w-4 h-4 text-current" />
                   </button>
                 </div>
               </div>
@@ -1098,19 +1191,15 @@ function ProductsContent() {
                               className={`text-xs font-semibold inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
                                 p.stockStatus === "in_stock"
                                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25"
-                                  : p.stockStatus === "out_of_stock"
-                                  ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/25"
                                   : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25"
                               }`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${
-                                p.stockStatus === "in_stock" ? "bg-emerald-500" : p.stockStatus === "out_of_stock" ? "bg-red-500" : "bg-amber-500"
+                                p.stockStatus === "in_stock" ? "bg-emerald-500" : "bg-amber-500"
                               }`} />
                               {p.stockStatus === "in_stock"
-                                ? `In Stock (${p.quantity ?? 10})`
-                                : p.stockStatus === "out_of_stock"
-                                ? "Out of Stock"
-                                : "Made to Order"}
+                                ? `In Stock (${p.quantity ?? 0})`
+                                : `Made to Order (${p.quantity ?? 0})`}
                             </span>
                           </td>
                           <td className="py-4 px-4 whitespace-nowrap">
@@ -1222,61 +1311,87 @@ function ProductsContent() {
                         </div>
                       )}
 
-                      <div className="absolute top-2 left-2 flex flex-col gap-1">
+                      {/* Top-left Badges */}
+                      <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5 z-10">
                         <span
-                          className={`badge ${
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide backdrop-blur-md shadow-md border ${
                             p.isPublished
-                              ? "bg-emerald-600/90 text-white"
-                              : "bg-amber-600/90 text-white"
-                          } backdrop-blur-sm`}
+                              ? "bg-emerald-950/80 text-emerald-300 border-emerald-500/40"
+                              : "bg-amber-950/80 text-amber-300 border-amber-500/40"
+                          }`}
                         >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              p.isPublished ? "bg-emerald-400 animate-pulse" : "bg-amber-400"
+                            }`}
+                          />
                           {p.isPublished ? "Live" : "Draft"}
                         </span>
                         {p.isFeatured && (
-                          <span className="badge bg-[#d43d8a] text-black">
-                            <Star className="w-2.5 h-2.5 mr-1 fill-black" />
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wide bg-[#B81862] text-white border border-pink-300/30 shadow-md backdrop-blur-md">
+                            <Star className="w-2.5 h-2.5 fill-white" />
                             Featured
                           </span>
                         )}
                       </div>
 
                       {/* Hover action overlay */}
-                      <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <div className="absolute top-2.5 right-2.5 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition duration-200 z-10">
                         <Link
                           href={`/admin/products/${p._id}`}
-                          className="w-7 h-7 bg-white/90 backdrop-blur-sm rounded-lg flex items-center justify-center text-black hover:bg-white transition"
-                          title="Edit"
+                          className="w-8 h-8 bg-black/60 hover:bg-[#B81862] backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white transition shadow-md"
+                          title="Edit Product"
                         >
                           <Edit className="w-3.5 h-3.5" />
                         </Link>
                         <button
                           type="button"
                           onClick={() => setDeleteProductTarget(p)}
-                          className="w-7 h-7 bg-red-500/90 backdrop-blur-sm rounded-lg flex items-center justify-center text-white hover:bg-red-500 transition"
-                          title="Delete"
+                          className="w-8 h-8 bg-black/60 hover:bg-red-600 backdrop-blur-md border border-white/20 rounded-xl flex items-center justify-center text-white transition shadow-md cursor-pointer"
+                          title="Delete Product"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
 
-                    <div className="p-3.5 space-y-2">
+                    <div className="p-3.5 space-y-2.5">
                       <div>
-                        <h3 className="font-semibold text-[var(--foreground)] text-sm line-clamp-1">
+                        <h3 className="font-semibold text-[var(--foreground)] text-sm line-clamp-1" title={p.name}>
                           {p.name}
                         </h3>
-                        <span className="font-mono text-[10px] text-[var(--muted)]">
-                          {p.sku}
-                        </span>
+                        <div className="flex items-center justify-between mt-1 gap-2">
+                          <span className="font-mono text-[10px] text-[var(--muted)] truncate">
+                            {p.sku}
+                          </span>
+                          <span
+                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border shrink-0 inline-flex items-center gap-1 ${
+                              (p.quantity ?? 0) > 5
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                : (p.quantity ?? 0) > 0
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                            }`}
+                          >
+                            Qty: <strong className="font-bold">{p.quantity ?? 0}</strong>
+                          </span>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
-                        <span className="font-bold text-[var(--foreground)] text-sm">
-                          ₹{Number(p.discountPrice || p.price).toLocaleString("en-IN")}
-                        </span>
+                        <div>
+                          <span className="font-bold text-[var(--foreground)] text-sm">
+                            ₹{Number(p.discountPrice || p.price).toLocaleString("en-IN")}
+                          </span>
+                          {p.discountPrice && (
+                            <span className="block text-[10px] text-[var(--muted)] line-through">
+                              ₹{Number(p.price).toLocaleString("en-IN")}
+                            </span>
+                          )}
+                        </div>
                         <Link
                           href={`/admin/products/${p._id}`}
-                          className="text-xs font-bold text-[#B81862] dark:text-[#B81862] hover:text-[#B81862] dark:hover:text-[#d43d8a] transition"
+                          className="text-xs font-bold text-[#B81862] dark:text-[#d43d8a] hover:underline transition"
                         >
                           Edit →
                         </Link>
@@ -1363,41 +1478,116 @@ function ProductsContent() {
                 />
               </div>
 
-              <div>
-                <label className="text-xs font-semibold text-gray-300 block mb-1">
-                  Cover Image URL
-                  <span className="text-[#B81862] ml-1 font-normal">(shown on category card)</span>
-                </label>
-                <input
-                  id="cat-image-input"
-                  type="url"
-                  value={catForm.image}
-                  onChange={(e) => setCatForm({ ...catForm, image: e.target.value })}
-                  placeholder="https://example.com/image.jpg"
-                  className="input text-xs w-full"
-                />
+              {/* Category Cover Image Section */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-[#B81862]" />
+                    <span>Category Cover Image</span>
+                  </label>
+                  <span className="text-[10px] text-[var(--muted)] font-medium">
+                    Upload image or paste URL
+                  </span>
+                </div>
+
                 {catForm.image ? (
-                  <div className="mt-2 rounded-xl overflow-hidden border border-[#333] h-24 bg-[#111]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={catForm.image}
-                      alt="Cover preview"
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
+                  <div className="relative rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface-2)] group shadow-sm">
+                    <div className="h-32 w-full relative bg-[#111]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={catForm.image}
+                        alt="Category Cover"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = getCategoryPlaceholder(catForm.name);
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => catFileInputRef.current?.click()}
+                          disabled={catUploading}
+                          className="px-3 py-1.5 rounded-xl bg-white text-black text-xs font-bold shadow-lg hover:bg-gray-100 transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Upload className="w-3.5 h-3.5" />
+                          Change
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCatForm((prev) => ({ ...prev, image: "" }))}
+                          disabled={catUploading}
+                          className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold shadow-lg hover:bg-red-700 transition flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Remove
+                        </button>
+                      </div>
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-white text-[10px] font-semibold border border-white/10">
+                        Cover Photo
+                      </div>
+                    </div>
+                    <div className="p-2.5 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-between gap-2 text-xs">
+                      <span className="text-[11px] text-[var(--muted)] truncate font-mono max-w-[240px]">
+                        {catForm.image}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCatForm((prev) => ({ ...prev, image: "" }))}
+                        className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer shrink-0"
+                      >
+                        Clear
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <div className="mt-2 rounded-xl overflow-hidden border border-dashed border-[#444] h-24 bg-[#141414] relative group">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={getCategoryPlaceholder(catForm.name)}
-                      alt="Default category placeholder"
-                      className="w-full h-full object-cover opacity-60"
-                    />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="text-[10px] font-semibold text-[#d43d8a] bg-black/70 px-2.5 py-1 rounded-full border border-[#d43d8a]/30">
-                        Default Category Placeholder
-                      </span>
+                  <div className="space-y-2">
+                    <label
+                      className={`relative rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-[#B81862] bg-[var(--surface-2)]/60 hover:bg-[#B81862]/5 p-4 sm:p-5 flex flex-col items-center justify-center text-center cursor-pointer transition group ${
+                        catUploading ? "opacity-75 pointer-events-none" : ""
+                      }`}
+                    >
+                      {catUploading ? (
+                        <div className="py-2 flex flex-col items-center">
+                          <Loader2 className="w-7 h-7 text-[#B81862] animate-spin mb-2" />
+                          <span className="text-xs font-semibold text-[var(--foreground)]">
+                            Uploading image to Cloudinary...
+                          </span>
+                          <span className="text-[10px] text-[var(--muted)] mt-0.5">Please wait</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="w-10 h-10 rounded-2xl bg-[#B81862]/10 border border-[#B81862]/20 flex items-center justify-center text-[#B81862] mb-2 group-hover:scale-110 transition">
+                            <Upload className="w-5 h-5" />
+                          </div>
+                          <span className="text-xs font-bold text-[var(--foreground)]">
+                            Click to upload category cover
+                          </span>
+                          <span className="text-[10px] text-[var(--muted)] mt-1">
+                            PNG, JPG, WEBP up to 10MB
+                          </span>
+                        </>
+                      )}
+                      <input
+                        ref={catFileInputRef}
+                        id="cat-image-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleCatImageUpload}
+                        disabled={catUploading}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Direct Image URL input */}
+                    <div className="relative">
+                      <input
+                        id="cat-image-input"
+                        type="url"
+                        value={catForm.image}
+                        onChange={(e) => setCatForm({ ...catForm, image: e.target.value })}
+                        placeholder="Or paste direct image URL (https://...)"
+                        className="input text-xs w-full"
+                      />
                     </div>
                   </div>
                 )}
@@ -1440,11 +1630,11 @@ function ProductsContent() {
                 </button>
                 <button
                   type="submit"
-                  disabled={catSaving}
+                  disabled={catSaving || catUploading}
                   className="btn-primary text-xs flex items-center gap-2"
                 >
-                  {catSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{catEditTarget ? "Save Changes" : "Create Folder"}</span>
+                  {(catSaving || catUploading) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{catSaving ? "Saving..." : catUploading ? "Uploading..." : catEditTarget ? "Save Changes" : "Create Folder"}</span>
                 </button>
               </div>
             </form>
@@ -1466,6 +1656,7 @@ function ProductsContent() {
             <div className="flex gap-2.5 justify-end">
               <button
                 type="button"
+                disabled={productDeleting}
                 onClick={() => setDeleteProductTarget(null)}
                 className="btn-ghost text-xs"
               >
@@ -1473,10 +1664,12 @@ function ProductsContent() {
               </button>
               <button
                 type="button"
+                disabled={productDeleting}
                 onClick={confirmDeleteProduct}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
               >
-                Delete Piece
+                {productDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>{productDeleting ? "Deleting..." : "Delete Piece"}</span>
               </button>
             </div>
           </div>
@@ -1497,6 +1690,7 @@ function ProductsContent() {
             <div className="flex gap-2.5 justify-end">
               <button
                 type="button"
+                disabled={categoryDeleting}
                 onClick={() => setDeleteCategoryTarget(null)}
                 className="btn-ghost text-xs"
               >
@@ -1504,10 +1698,12 @@ function ProductsContent() {
               </button>
               <button
                 type="button"
+                disabled={categoryDeleting}
                 onClick={confirmDeleteCategory}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
               >
-                Delete Category
+                {categoryDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <span>{categoryDeleting ? "Deleting..." : "Delete Category"}</span>
               </button>
             </div>
           </div>

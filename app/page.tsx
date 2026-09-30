@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import {
   Search,
@@ -21,6 +21,11 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Filter,
+  SlidersHorizontal,
+  Star,
+  Percent,
+  RotateCcw,
 } from "lucide-react";
 import { IProduct, ICategory } from "@/types";
 import { getProductPlaceholder, getCategoryPlaceholder } from "@/lib/placeholderImages";
@@ -45,8 +50,38 @@ export default function SimpleCataloguePage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedStock, setSelectedStock] = useState<string>("all");
+  const [priceRange, setPriceRange] = useState<string>("all");
+  const [onlyFeatured, setOnlyFeatured] = useState(false);
+  const [onlyDiscounted, setOnlyDiscounted] = useState(false);
+  const [sortBy, setSortBy] = useState<string>("featured");
   const [selectedProduct, setSelectedProduct] = useState<IProduct | null>(null);
   const [productModalImageIndex, setProductModalImageIndex] = useState(0);
+
+  // Category stories scroll ref & navigation buttons state
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkCategoryScroll = useCallback(() => {
+    const el = categoryScrollRef.current;
+    if (el) {
+      const hasOverflow = el.scrollWidth > el.clientWidth + 4;
+      setCanScrollLeft(el.scrollLeft > 6);
+      setCanScrollRight(hasOverflow && el.scrollLeft < el.scrollWidth - el.clientWidth - 6);
+    }
+  }, []);
+
+  const scrollCategories = (direction: "left" | "right") => {
+    const el = categoryScrollRef.current;
+    if (el) {
+      const scrollAmount = Math.max(220, Math.floor(el.clientWidth * 0.65));
+      el.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
 
   // Cart state
   const [cart, setCart] = useState<Record<string, CartItem>>({});
@@ -66,6 +101,8 @@ export default function SimpleCataloguePage() {
   const [showVisitorModal, setShowVisitorModal] = useState(false);
   const [visitorForm, setVisitorForm] = useState({ name: "", phone: "" });
   const [visitorFormError, setVisitorFormError] = useState("");
+  const [visitorSaving, setVisitorSaving] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
   const phoneRef = useRef<HTMLInputElement>(null);
 
   // Single request item modal (direct request)
@@ -75,6 +112,7 @@ export default function SimpleCataloguePage() {
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestSuccess, setRequestSuccess] = useState(false);
   const [requestError, setRequestError] = useState("");
+  const [lastSubmittedOrderId, setLastSubmittedOrderId] = useState<string>("");
 
   // Load visitor & cart from localStorage
   useEffect(() => {
@@ -147,7 +185,43 @@ export default function SimpleCataloguePage() {
     });
   }, [categories]);
 
-  // Filter products
+  useEffect(() => {
+    const el = categoryScrollRef.current;
+    if (!el) return;
+    const timer = setTimeout(checkCategoryScroll, 100);
+    el.addEventListener("scroll", checkCategoryScroll, { passive: true });
+    window.addEventListener("resize", checkCategoryScroll);
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("scroll", checkCategoryScroll);
+      window.removeEventListener("resize", checkCategoryScroll);
+    };
+  }, [checkCategoryScroll, dedupedCategories]);
+
+  // Active Filter Count & Reset helper
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (search.trim()) count++;
+    if (selectedCategory !== "all") count++;
+    if (selectedStock !== "all") count++;
+    if (priceRange !== "all") count++;
+    if (onlyFeatured) count++;
+    if (onlyDiscounted) count++;
+    if (sortBy !== "featured") count++;
+    return count;
+  }, [search, selectedCategory, selectedStock, priceRange, onlyFeatured, onlyDiscounted, sortBy]);
+
+  const resetAllFilters = () => {
+    setSearch("");
+    setSelectedCategory("all");
+    setSelectedStock("all");
+    setPriceRange("all");
+    setOnlyFeatured(false);
+    setOnlyDiscounted(false);
+    setSortBy("featured");
+  };
+
+  // Filter and sort products
   const filteredProducts = useMemo(() => {
     const activeCat = dedupedCategories.find(
       (c) =>
@@ -156,7 +230,8 @@ export default function SimpleCataloguePage() {
         c.name?.toLowerCase() === selectedCategory?.toLowerCase()
     );
 
-    return products.filter((p) => {
+    const result = products.filter((p) => {
+      // 1. Category Filter
       if (selectedCategory !== "all") {
         const catObj =
           typeof p.categoryId === "object" && p.categoryId !== null
@@ -176,19 +251,85 @@ export default function SimpleCataloguePage() {
 
         if (!match) return false;
       }
+
+      // 2. Search Query (Name, SKU, Description, Category, Tags)
       if (search.trim()) {
         const q = search.toLowerCase().trim();
-        const matchesName = p.name?.toLowerCase().includes(q);
+        const matchesName = (p.name || "").toLowerCase().includes(q);
+        const matchesSku = (p.sku || "").toLowerCase().includes(q);
         const matchesDesc = (p.shortDescription || p.description || "").toLowerCase().includes(q);
         const pCatName =
           (typeof p.categoryId === "object" ? (p.categoryId as { name?: string })?.name : null) ||
-          p.category?.name;
-        const matchesCat = pCatName?.toLowerCase().includes(q);
-        if (!matchesName && !matchesDesc && !matchesCat) return false;
+          p.category?.name ||
+          "";
+        const matchesCat = pCatName.toLowerCase().includes(q);
+        const matchesTags = (p.tags || []).some((t) => t.toLowerCase().includes(q));
+
+        if (!matchesName && !matchesSku && !matchesDesc && !matchesCat && !matchesTags) return false;
       }
+
+      // 3. Stock Status Filter
+      if (selectedStock !== "all") {
+        if (selectedStock === "in_stock" && p.stockStatus !== "in_stock") return false;
+        if (selectedStock === "made_to_order" && p.stockStatus !== "made_to_order") return false;
+      }
+
+      // 4. Price Range Filter
+      const effectivePrice = Number(p.discountPrice || p.price || 0);
+      if (priceRange === "under_1l" && effectivePrice >= 100000) return false;
+      if (priceRange === "1l_5l" && (effectivePrice < 100000 || effectivePrice > 500000)) return false;
+      if (priceRange === "above_5l" && effectivePrice <= 500000) return false;
+
+      // 5. Featured Only
+      if (onlyFeatured && !p.isFeatured) return false;
+
+      // 6. Discounted / Offers Only
+      if (onlyDiscounted && (!p.discountPrice || p.discountPrice >= p.price)) return false;
+
       return true;
     });
-  }, [products, selectedCategory, search, categories]);
+
+    // Sort Products
+    result.sort((a, b) => {
+      const priceA = Number(a.discountPrice || a.price || 0);
+      const priceB = Number(b.discountPrice || b.price || 0);
+      const qtyA = Number(a.quantity ?? 0);
+      const qtyB = Number(b.quantity ?? 0);
+
+      switch (sortBy) {
+        case "featured":
+          if (a.isFeatured && !b.isFeatured) return -1;
+          if (!a.isFeatured && b.isFeatured) return 1;
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        case "newest":
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        case "oldest":
+          return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        case "price-asc":
+          return priceA - priceB;
+        case "price-desc":
+          return priceB - priceA;
+        case "qty-desc":
+          return qtyB - qtyA;
+        case "name-asc":
+          return (a.name || "").localeCompare(b.name || "");
+        default:
+          return 0;
+      }
+    });
+
+    return result;
+  }, [
+    products,
+    selectedCategory,
+    search,
+    selectedStock,
+    priceRange,
+    onlyFeatured,
+    onlyDiscounted,
+    sortBy,
+    dedupedCategories,
+  ]);
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("en-IN", {
@@ -321,8 +462,8 @@ export default function SimpleCataloguePage() {
     updateCartState({});
   };
 
-  // Save visitor info
-  const handleSaveVisitor = (e: React.FormEvent) => {
+  // Save visitor info + set server session cookie
+  const handleSaveVisitor = async (e: React.FormEvent) => {
     e.preventDefault();
     setVisitorFormError("");
     if (!visitorForm.name.trim()) {
@@ -336,6 +477,16 @@ export default function SimpleCataloguePage() {
     const info = { name: visitorForm.name.trim(), phone: visitorForm.phone.trim() };
     localStorage.setItem(VISITOR_KEY, JSON.stringify(info));
     setVisitorInfo(info);
+    setVisitorSaving(true);
+    // Also set server-side session so customer dashboard works
+    try {
+      await fetch("/api/customer/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: info.name, phone: info.phone }),
+      });
+    } catch { /* non-critical */ }
+    setVisitorSaving(false);
     setShowVisitorModal(false);
   };
 
@@ -376,7 +527,16 @@ export default function SimpleCataloguePage() {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to submit request.");
       }
+      setLastSubmittedOrderId(data.orderId || data.request?.orderId || "");
       setRequestSuccess(true);
+      // Ensure customer session cookie is refreshed
+      try {
+        fetch("/api/customer/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: visitorInfo.name, phone: visitorInfo.phone }),
+        }).catch(() => {});
+      } catch {}
     } catch (err) {
       setRequestError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -419,10 +579,19 @@ export default function SimpleCataloguePage() {
         throw new Error(data.error || "Failed to submit cart request.");
       }
 
+      setLastSubmittedOrderId(data.orderId || data.requests?.[0]?.orderId || "");
       setCartSuccessItems([...cartItemList]);
       setCartSuccess(true);
       handleClearCart();
       setCartNote("");
+      // Ensure customer session cookie is refreshed
+      try {
+        fetch("/api/customer/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: visitorInfo.name, phone: visitorInfo.phone }),
+        }).catch(() => {});
+      } catch {}
     } catch (err) {
       setCartError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -432,13 +601,19 @@ export default function SimpleCataloguePage() {
 
   // WhatsApp enquiry for Cart
   const getCartWhatsAppUrl = () => {
-    if (cartItemList.length === 0) return `https://wa.me/${WHATSAPP_NUMBER}`;
+    if (cartItemList.length === 0 && !lastSubmittedOrderId) return `https://wa.me/${WHATSAPP_NUMBER}`;
     let message = `Hello Dwara Collections, I would like to request/enquire about the following items from my cart:\n\n`;
-    cartItemList.forEach((item, index) => {
+    if (lastSubmittedOrderId) {
+      message = `Hello Dwara Collections, regarding my Order Reference: *${lastSubmittedOrderId}*:\n\n`;
+    }
+    const itemsToFormat = cartItemList.length > 0 ? cartItemList : cartSuccessItems;
+    itemsToFormat.forEach((item, index) => {
       const price = item.product.discountPrice || item.product.price;
       message += `${index + 1}. *${item.product.name}*\n   SKU: ${item.product.sku || "N/A"} | Qty: ${item.quantity} | Price: ${formatPrice(price * item.quantity)}\n`;
     });
-    message += `\n*Total Estimated:* ${formatPrice(totalCartPrice)}`;
+    if (totalCartPrice > 0) {
+      message += `\n*Total Estimated:* ${formatPrice(totalCartPrice)}`;
+    }
     if (visitorInfo) {
       message += `\n*Customer:* ${visitorInfo.name} (${visitorInfo.phone})`;
     }
@@ -512,9 +687,17 @@ export default function SimpleCataloguePage() {
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-sm shadow-md hover:opacity-95 transition cursor-pointer"
+                disabled={visitorSaving}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-sm shadow-md hover:opacity-95 transition cursor-pointer disabled:opacity-70 flex items-center justify-center gap-2"
               >
-                Save Details &amp; Continue
+                {visitorSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  "Save Details & Continue"
+                )}
               </button>
             </form>
           </div>
@@ -580,6 +763,15 @@ export default function SimpleCataloguePage() {
                     <span className="font-semibold text-[#111111]">{visitorInfo?.phone}</span> shortly.
                   </p>
 
+                  {lastSubmittedOrderId && (
+                    <div className="p-3.5 bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] flex items-center justify-between text-xs max-w-sm mx-auto shadow-xs">
+                      <span className="text-[#7A5E6A] font-semibold">Order Reference ID:</span>
+                      <span className="font-mono font-bold text-[#B81862] text-xs bg-white px-2.5 py-1 rounded-lg border border-[#F0D6E8]">
+                        {lastSubmittedOrderId}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Summary of submitted items */}
                   <div className="mt-4 p-4 bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] text-left space-y-2 max-h-48 overflow-y-auto">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A5E6A] block mb-1">
@@ -603,6 +795,14 @@ export default function SimpleCataloguePage() {
                     >
                       Continue Browsing
                     </button>
+                    <Link
+                      href="/my-orders"
+                      onClick={() => { setCartSuccess(false); setShowCartModal(false); }}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#FFF8FB] border border-[#F0D6E8] text-[#B81862] font-bold text-xs hover:bg-[#FFF0F7] transition flex items-center justify-center gap-1.5"
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                      View My Orders
+                    </Link>
                     <a
                       href={getCartWhatsAppUrl()}
                       target="_blank"
@@ -862,12 +1062,45 @@ export default function SimpleCataloguePage() {
                   <span className="text-[#B81862] font-semibold">{visitorInfo.phone}</span> regarding{" "}
                   <span className="text-[#111111] font-semibold">{requestProduct.name}</span>.
                 </p>
-                <button
-                  onClick={() => setRequestProduct(null)}
-                  className="px-6 py-2.5 rounded-xl bg-[#FDE8F2] border border-[#F0D6E8] text-sm font-semibold text-[#111111] hover:border-[#B81862] transition cursor-pointer"
-                >
-                  Close
-                </button>
+
+                {lastSubmittedOrderId && (
+                  <div className="p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs max-w-xs mx-auto shadow-xs">
+                    <span className="text-[#7A5E6A] font-semibold">Order Reference ID:</span>
+                    <span className="font-mono font-bold text-[#B81862] text-xs bg-white px-2.5 py-1 rounded-md border border-[#F0D6E8]">
+                      {lastSubmittedOrderId}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
+                  <button
+                    onClick={() => setRequestProduct(null)}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FDE8F2] border border-[#F0D6E8] text-xs font-semibold text-[#111111] hover:border-[#B81862] transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <Link
+                    href="/my-orders"
+                    onClick={() => setRequestProduct(null)}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#B81862]/10 border border-[#B81862]/30 text-[#B81862] font-bold text-xs hover:bg-[#B81862]/20 transition flex items-center justify-center gap-1.5"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5" />
+                    View My Orders
+                  </Link>
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                      `Hello Dwara Collections, I submitted a request for ${requestProduct.name} (SKU: ${requestProduct.sku || "N/A"})${
+                        lastSubmittedOrderId ? ` with Order Reference ID: *${lastSubmittedOrderId}*` : ""
+                      }. Customer: ${visitorInfo.name} (${visitorInfo.phone}).`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#25D366] text-white font-bold text-xs shadow-md hover:bg-[#20ba59] transition flex items-center justify-center gap-1.5"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-white" />
+                    <span>Chat on WhatsApp</span>
+                  </a>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSubmitSingleRequest} className="space-y-4">
@@ -1022,24 +1255,55 @@ export default function SimpleCataloguePage() {
               )}
             </button>
 
-            {/* Visitor Account Button */}
-            {visitorInfo ? (
-              <button
-                onClick={() => setShowVisitorModal(true)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FFF8FB] text-[#B81862] border border-[#F0D6E8] hover:border-[#B81862] shadow-xs transition cursor-pointer"
-              >
-                <User className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline max-w-[90px] truncate">{visitorInfo.name}</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowVisitorModal(true)}
-                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FFF8FB] text-[#332E29] border border-[#F0D6E8] hover:border-[#B81862] hover:text-[#B81862] shadow-xs transition cursor-pointer"
-              >
-                <User className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">Sign In</span>
-              </button>
-            )}
+            {/* Visitor Account Button + Dropdown */}
+            <div className="relative">
+              {visitorInfo ? (
+                <button
+                  onClick={() => setShowUserDropdown((p) => !p)}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold bg-[#B81862]/10 text-[#B81862] border border-[#B81862]/30 hover:bg-[#B81862]/20 shadow-xs transition cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline max-w-[90px] truncate">{visitorInfo.name.split(" ")[0]}</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setShowVisitorModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FFF8FB] text-[#332E29] border border-[#F0D6E8] hover:border-[#B81862] hover:text-[#B81862] shadow-xs transition cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Sign In</span>
+                </button>
+              )}
+              {/* User dropdown */}
+              {showUserDropdown && visitorInfo && (
+                <>
+                  <div className="fixed inset-0 z-[35]" onClick={() => setShowUserDropdown(false)} />
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-[#F0D6E8] rounded-2xl shadow-2xl z-[36] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-4 py-3 border-b border-[#F0D6E8] bg-[#FFF8FB]">
+                      <p className="text-xs font-bold text-[#111111] truncate">{visitorInfo.name}</p>
+                      <p className="text-[11px] text-[#7A5E6A] font-mono truncate">{visitorInfo.phone}</p>
+                    </div>
+                    <div className="p-1.5 space-y-0.5">
+                      <Link
+                        href="/my-orders"
+                        onClick={() => setShowUserDropdown(false)}
+                        className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-[#111111] hover:bg-[#FFF0F7] hover:text-[#B81862] transition"
+                      >
+                        <ShoppingBag className="w-4 h-4 text-[#B81862]" />
+                        My Orders
+                      </Link>
+                      <button
+                        onClick={() => { setShowUserDropdown(false); setShowVisitorModal(true); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-semibold text-[#7A5E6A] hover:bg-[#F5F5F5] transition"
+                      >
+                        <User className="w-4 h-4" />
+                        Edit Details
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* WhatsApp */}
             <a
@@ -1093,10 +1357,45 @@ export default function SimpleCataloguePage() {
           </p>
         </div>
 
-        {/* Circular Category Story Navigation */}
+        {/* Circular Category Story Navigation Carousel */}
         {dedupedCategories.length > 0 && (
-          <div className="mt-2.5 sm:mt-3.5 max-w-5xl mx-auto">
-            <div className="flex items-center justify-start sm:justify-center gap-3 sm:gap-5 md:gap-7 overflow-x-auto pt-2 pb-1.5 px-4 no-scrollbar scroll-smooth">
+          <div className="relative mt-3 sm:mt-4 max-w-6xl mx-auto px-2 sm:px-6">
+            {/* Left Scroll Navigation Button */}
+            {canScrollLeft && (
+              <button
+                type="button"
+                onClick={() => scrollCategories("left")}
+                aria-label="Scroll left categories"
+                className="absolute left-0 sm:left-1 top-[28px] sm:top-[36px] z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 border border-[#F0D6E8] text-[#B81862] shadow-md flex items-center justify-center hover:bg-[#B81862] hover:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-sm"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Right Scroll Navigation Button */}
+            {canScrollRight && (
+              <button
+                type="button"
+                onClick={() => scrollCategories("right")}
+                aria-label="Scroll right categories"
+                className="absolute right-0 sm:right-1 top-[28px] sm:top-[36px] z-20 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 border border-[#F0D6E8] text-[#B81862] shadow-md flex items-center justify-center hover:bg-[#B81862] hover:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer backdrop-blur-sm"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Left/Right Subtle Fade Gradients when scrollable */}
+            {canScrollLeft && (
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 sm:w-12 bg-gradient-to-r from-[#FFF8FB] to-transparent z-10" />
+            )}
+            {canScrollRight && (
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 sm:w-12 bg-gradient-to-l from-[#FFF8FB] to-transparent z-10" />
+            )}
+
+            <div
+              ref={categoryScrollRef}
+              className="flex items-start justify-start gap-3 sm:gap-5 md:gap-6 overflow-x-auto pt-2 pb-2 px-3 sm:px-6 no-scrollbar scroll-smooth"
+            >
               {/* All Items Avatar */}
               <button
                 type="button"
@@ -1122,9 +1421,9 @@ export default function SimpleCataloguePage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-center">
+                <div className="text-center w-[84px] sm:w-[96px] min-h-[34px] flex flex-col items-center">
                   <span
-                    className={`block text-[11px] sm:text-xs font-bold leading-tight transition-colors ${
+                    className={`block text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 transition-colors ${
                       selectedCategory === "all"
                         ? "text-[#B81862] font-extrabold"
                         : "text-[#332E29] group-hover:text-[#B81862]"
@@ -1192,9 +1491,9 @@ export default function SimpleCataloguePage() {
                         />
                       </div>
                     </div>
-                    <div className="text-center max-w-[76px] sm:max-w-[92px]">
+                    <div className="text-center w-[84px] sm:w-[96px] min-h-[34px] flex flex-col items-center">
                       <span
-                        className={`block text-[11px] sm:text-xs font-bold leading-tight truncate transition-colors ${
+                        className={`block text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 transition-colors ${
                           isSelected
                             ? "text-[#B81862] font-extrabold"
                             : "text-[#332E29] group-hover:text-[#B81862]"
@@ -1219,24 +1518,199 @@ export default function SimpleCataloguePage() {
 
       {/* ── PRODUCT GRID ──────────────────────────────────────────── */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-28">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#7A5E6A]">
-            Showing <span className="text-[#111111] font-bold">{filteredProducts.length}</span> items
-            {selectedCategory !== "all" && (
-              <>
-                {" "}
-                in <span className="text-[#B81862] font-bold">{categories.find((c) => c._id === selectedCategory)?.name}</span>
-              </>
-            )}
-          </p>
-          {totalCartCount > 0 && (
-            <button
-              onClick={() => setShowCartModal(true)}
-              className="text-xs font-bold text-[#B81862] hover:underline flex items-center gap-1"
-            >
-              <span>View Cart ({totalCartCount})</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+        {/* ── SEARCH & FILTERS TOOLBAR ─────────────────────────────────── */}
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-[#F0D6E8] p-3 sm:p-4 mb-4 sm:mb-6 shadow-[0_4px_20px_rgba(184,24,98,0.04)] space-y-3">
+          {/* Top row: Search Bar + Filter Dropdowns */}
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 sm:gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-[#B81862] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                id="homepage-search-input"
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search jewellery, SKU, gemstones, diamonds, gold..."
+                className="w-full pl-9 pr-9 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs sm:text-sm text-[#111111] placeholder:text-[#998E84] focus:outline-none focus:border-[#B81862] focus:ring-1 focus:ring-[#B81862] transition"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#888] hover:text-[#111] hover:bg-[#F0D6E8]/50 transition cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Filter Dropdowns */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+              {/* Category Dropdown */}
+              <select
+                id="homepage-category-filter"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[130px]"
+              >
+                <option value="all">All Collections</option>
+                {dedupedCategories.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              {/* Stock Status Dropdown */}
+              <select
+                id="homepage-stock-filter"
+                value={selectedStock}
+                onChange={(e) => setSelectedStock(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[115px]"
+              >
+                <option value="all">All Stock</option>
+                <option value="in_stock">In Stock</option>
+                <option value="made_to_order">Made to Order</option>
+              </select>
+
+              {/* Price Range Dropdown */}
+              <select
+                id="homepage-price-filter"
+                value={priceRange}
+                onChange={(e) => setPriceRange(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[130px]"
+              >
+                <option value="all">All Prices</option>
+                <option value="under_1l">Under ₹1,00,000</option>
+                <option value="1l_5l">₹1L – ₹5 Lakh</option>
+                <option value="above_5l">Above ₹5,00,000</option>
+              </select>
+
+              {/* Sort By Dropdown */}
+              <select
+                id="homepage-sort-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[135px]"
+              >
+                <option value="featured">Featured First</option>
+                <option value="newest">Newest First</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="qty-desc">Quantity: High to Low</option>
+                <option value="name-asc">Name: A to Z</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quick Toggle Pills: Featured & Discounted Offers */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#F0D6E8]/60 text-xs">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-[#7A5E6A] uppercase tracking-wider hidden sm:inline mr-1">
+                Quick Filters:
+              </span>
+              <button
+                type="button"
+                onClick={() => setOnlyFeatured(!onlyFeatured)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+                  onlyFeatured
+                    ? "bg-[#B81862] text-white shadow-xs"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                }`}
+              >
+                <Star className={`w-3.5 h-3.5 ${onlyFeatured ? "fill-white text-white" : "text-[#B81862]"}`} />
+                <span>Featured Pieces</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOnlyDiscounted(!onlyDiscounted)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+                  onlyDiscounted
+                    ? "bg-[#B81862] text-white shadow-xs"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                }`}
+              >
+                <Percent className={`w-3.5 h-3.5 ${onlyDiscounted ? "text-white" : "text-[#B81862]"}`} />
+                <span>Special Offers</span>
+              </button>
+
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-semibold text-xs text-[#B81862] hover:bg-[#FDE8F2] transition cursor-pointer"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset All ({activeFilterCount})</span>
+                </button>
+              )}
+            </div>
+
+            <div className="text-[11px] text-[#7A5E6A] font-medium">
+              Showing <strong className="text-[#111111] font-bold">{filteredProducts.length}</strong> of{" "}
+              <span>{products.length}</span> pieces
+            </div>
+          </div>
+
+          {/* Active Filter Badges */}
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {search && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
+                  Search: &ldquo;{search}&rdquo;
+                  <button onClick={() => setSearch("")} className="hover:text-black cursor-pointer">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {selectedCategory !== "all" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
+                  Collection: {categories.find((c) => c._id === selectedCategory)?.name || selectedCategory}
+                  <button onClick={() => setSelectedCategory("all")} className="hover:text-black cursor-pointer">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {selectedStock !== "all" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
+                  Stock: {selectedStock === "in_stock" ? "In Stock" : "Made to Order"}
+                  <button onClick={() => setSelectedStock("all")} className="hover:text-black cursor-pointer">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {priceRange !== "all" && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
+                  Price:{" "}
+                  {priceRange === "under_1l"
+                    ? "Under ₹1 Lakh"
+                    : priceRange === "1l_5l"
+                    ? "₹1L – ₹5L"
+                    : "Above ₹5 Lakh"}
+                  <button onClick={() => setPriceRange("all")} className="hover:text-black cursor-pointer">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {onlyFeatured && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
+                  ★ Featured
+                  <button onClick={() => setOnlyFeatured(false)} className="hover:text-black cursor-pointer">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+              {onlyDiscounted && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
+                  % Special Offers
+                  <button onClick={() => setOnlyDiscounted(false)} className="hover:text-black cursor-pointer">
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -1258,18 +1732,17 @@ export default function SimpleCataloguePage() {
             <h3 className="font-serif text-lg font-bold text-[#111111] mb-1">No products found</h3>
             <p className="text-xs text-[#555047] mb-4">
               {search
-                ? `No products matched "${search}". Try searching another name.`
-                : "No items available in this category yet."}
+                ? `No products matched "${search}". Try adjusting your filters.`
+                : "No items match the selected filter criteria."}
             </p>
-            {(search || selectedCategory !== "all") && (
+            {activeFilterCount > 0 && (
               <button
-                onClick={() => {
-                  setSearch("");
-                  setSelectedCategory("all");
-                }}
-                className="px-4 py-2 bg-[#FDE8F2] hover:bg-[#FDF0F6] text-xs font-semibold rounded-lg text-[#111111] transition cursor-pointer"
+                type="button"
+                onClick={resetAllFilters}
+                className="px-4 py-2 bg-[#FDE8F2] hover:bg-[#FDF0F6] text-xs font-semibold rounded-lg text-[#B81862] border border-[#F0D6E8] transition cursor-pointer inline-flex items-center gap-1.5"
               >
-                Clear Filters
+                <RotateCcw className="w-3.5 h-3.5" />
+                Clear All Filters
               </button>
             )}
           </div>
@@ -1316,6 +1789,10 @@ export default function SimpleCataloguePage() {
                       {isOutOfStock ? (
                         <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-[11px] font-bold bg-red-100 text-red-800 border border-red-300 backdrop-blur-sm shadow-xs">
                           Out of Stock
+                        </span>
+                      ) : product.showQuantity === false ? (
+                        <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 backdrop-blur-sm shadow-xs">
+                          In Stock
                         </span>
                       ) : isLowStock ? (
                         <span className="px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 backdrop-blur-sm shadow-xs">

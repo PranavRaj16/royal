@@ -4,6 +4,13 @@ import { ItemRequest } from "@/models/ItemRequest";
 import { Business } from "@/models";
 import mongoose from "mongoose";
 import crypto from "crypto";
+import { sendAdminOrderNotification } from "@/lib/email";
+
+function generateOrderId(): string {
+  const timestamp = Date.now().toString().slice(-6);
+  const rand = Math.floor(10 + Math.random() * 90);
+  return `DW-ORD-${timestamp}${rand}`;
+}
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown> = {};
@@ -45,6 +52,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const orderId = body.orderId ? String(body.orderId).trim() : generateOrderId();
+
   try {
     await connectToDatabase();
 
@@ -68,7 +77,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (isBatch) {
-      const orderId = crypto.randomUUID();
       const itemsToCreate = (items as Array<Record<string, unknown>>).map((it) => {
         const pId = it.productId && mongoose.Types.ObjectId.isValid(String(it.productId)) && String(it.productId).length === 24
           ? new mongoose.Types.ObjectId(String(it.productId))
@@ -88,6 +96,22 @@ export async function POST(request: NextRequest) {
       });
 
       const createdList = await ItemRequest.insertMany(itemsToCreate);
+
+      // Trigger admin email notification asynchronously
+      sendAdminOrderNotification({
+        orderId,
+        visitorName: cleanVisitorName,
+        visitorPhone: cleanVisitorPhone,
+        description: cleanDescription,
+        items: itemsToCreate.map((it) => ({
+          productName: it.productName,
+          productSku: it.productSku,
+          quantity: it.quantity,
+          productId: it.productId ? String(it.productId) : undefined,
+        })),
+        createdAt: new Date(),
+      }).catch((err) => console.error("[sendAdminOrderNotification batch error]", err));
+
       return NextResponse.json({ success: true, count: createdList.length, orderId, requests: createdList }, { status: 201 });
     }
 
@@ -111,9 +135,27 @@ export async function POST(request: NextRequest) {
       quantity: cleanQuantity,
       description: cleanDescription,
       status: "pending",
+      orderId,
     });
 
-    return NextResponse.json({ success: true, request: itemRequest }, { status: 201 });
+    // Trigger admin email notification asynchronously
+    sendAdminOrderNotification({
+      orderId,
+      visitorName: cleanVisitorName,
+      visitorPhone: cleanVisitorPhone,
+      description: cleanDescription,
+      items: [
+        {
+          productName: cleanProductName,
+          productSku: cleanProductSku,
+          quantity: cleanQuantity,
+          productId: validProductId ? String(validProductId) : undefined,
+        },
+      ],
+      createdAt: new Date(),
+    }).catch((err) => console.error("[sendAdminOrderNotification single error]", err));
+
+    return NextResponse.json({ success: true, request: itemRequest, orderId }, { status: 201 });
   } catch (dbErr) {
     console.warn("[public/requests POST] MongoDB write error, saving to demo fallback:", dbErr);
     const { createDemoRequest } = await import("@/lib/demoData");
@@ -129,9 +171,26 @@ export async function POST(request: NextRequest) {
           quantity: Math.max(1, Number(it.quantity) || 1),
           description: cleanDescription,
           status: "pending",
+          orderId,
         })
       );
-      return NextResponse.json({ success: true, count: createdFallback.length, requests: createdFallback, isFallback: true }, { status: 201 });
+
+      // Trigger admin email notification asynchronously
+      sendAdminOrderNotification({
+        orderId,
+        visitorName: cleanVisitorName,
+        visitorPhone: cleanVisitorPhone,
+        description: cleanDescription,
+        items: (items as Array<Record<string, unknown>>).map((it) => ({
+          productName: String(it.productName || "Jewellery Item").trim(),
+          productSku: it.productSku ? String(it.productSku).trim() : "",
+          quantity: Math.max(1, Number(it.quantity) || 1),
+          productId: it.productId ? String(it.productId) : undefined,
+        })),
+        createdAt: new Date(),
+      }).catch((err) => console.error("[sendAdminOrderNotification fallback batch error]", err));
+
+      return NextResponse.json({ success: true, count: createdFallback.length, orderId, requests: createdFallback, isFallback: true }, { status: 201 });
     }
 
     const demoReq = createDemoRequest({
@@ -143,8 +202,27 @@ export async function POST(request: NextRequest) {
       quantity: Math.max(1, Number(quantity) || 1),
       description: cleanDescription,
       status: "pending",
+      orderId,
     });
-    return NextResponse.json({ success: true, request: demoReq, isFallback: true }, { status: 201 });
+
+    // Trigger admin email notification asynchronously
+    sendAdminOrderNotification({
+      orderId,
+      visitorName: cleanVisitorName,
+      visitorPhone: cleanVisitorPhone,
+      description: cleanDescription,
+      items: [
+        {
+          productName: String(productName).trim(),
+          productSku: productSku ? String(productSku).trim() : "",
+          quantity: Math.max(1, Number(quantity) || 1),
+          productId: productId ? String(productId) : undefined,
+        },
+      ],
+      createdAt: new Date(),
+    }).catch((err) => console.error("[sendAdminOrderNotification fallback single error]", err));
+
+    return NextResponse.json({ success: true, request: demoReq, orderId, isFallback: true }, { status: 201 });
   }
 }
 

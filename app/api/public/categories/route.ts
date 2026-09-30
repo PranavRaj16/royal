@@ -4,26 +4,30 @@ import { Category } from "@/models";
 
 // Public categories - no auth required
 export async function GET() {
+  const { DEMO_CATEGORIES } = await import("@/lib/demoData");
   try {
     await connectToDatabase();
 
-    const categories = await Category.find({ isActive: true })
+    const dbCategories = await Category.find({ isActive: true })
       .sort({ displayOrder: 1, name: 1 })
       .lean();
 
-    // Deduplicate by slug or normalized name
-    const seen = new Set<string>();
-    const uniqueCategories = categories.filter((cat) => {
-      const key = (cat.slug || cat.name || "").toLowerCase().trim();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+    if (dbCategories && dbCategories.length > 0) {
+      const list = dbCategories.map((cat: any) => ({
+        ...cat,
+        _id: String(cat._id),
+      }));
+      return NextResponse.json({ success: true, categories: list });
+    }
 
-    return NextResponse.json({ success: true, categories: uniqueCategories });
+    // Fallback only if MongoDB has no categories
+    return NextResponse.json({
+      success: true,
+      categories: DEMO_CATEGORIES.filter((c) => c.isActive !== false),
+      isFallback: true,
+    });
   } catch (error) {
     console.error("GET /api/public/categories DB error (serving fallback categories):", error);
-    const { DEMO_CATEGORIES } = await import("@/lib/demoData");
     return NextResponse.json({ success: true, categories: DEMO_CATEGORIES, isFallback: true });
   }
 }
