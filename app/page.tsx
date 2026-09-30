@@ -17,16 +17,26 @@ import {
   AlertCircle,
   Plus,
   Minus,
+  Trash2,
+  ArrowRight,
+  ChevronRight,
+  CheckCircle2,
 } from "lucide-react";
 import { IProduct, ICategory } from "@/types";
 import { getProductPlaceholder } from "@/lib/placeholderImages";
 
 const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP || "919876543210";
 const VISITOR_KEY = "rj_visitor_info";
+const CART_KEY = "rj_cart_items";
 
 interface VisitorInfo {
   name: string;
   phone: string;
+}
+
+interface CartItem {
+  product: IProduct;
+  quantity: number;
 }
 
 export default function SimpleCataloguePage() {
@@ -37,6 +47,19 @@ export default function SimpleCataloguePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<IProduct | null>(null);
 
+  // Cart state
+  const [cart, setCart] = useState<Record<string, CartItem>>({});
+  const [showCartModal, setShowCartModal] = useState(false);
+  const [cartNote, setCartNote] = useState("");
+  const [cartSubmitting, setCartSubmitting] = useState(false);
+  const [cartSuccess, setCartSuccess] = useState(false);
+  const [cartSuccessItems, setCartSuccessItems] = useState<CartItem[]>([]);
+  const [cartError, setCartError] = useState("");
+
+  // Product card temporary selection quantities
+  const [cardQuantities, setCardQuantities] = useState<Record<string, number>>({});
+  const [addedAnimationId, setAddedAnimationId] = useState<string | null>(null);
+
   // Visitor info modal
   const [visitorInfo, setVisitorInfo] = useState<VisitorInfo | null>(null);
   const [showVisitorModal, setShowVisitorModal] = useState(false);
@@ -44,7 +67,7 @@ export default function SimpleCataloguePage() {
   const [visitorFormError, setVisitorFormError] = useState("");
   const phoneRef = useRef<HTMLInputElement>(null);
 
-  // Request item modal
+  // Single request item modal (direct request)
   const [requestProduct, setRequestProduct] = useState<IProduct | null>(null);
   const [requestQty, setRequestQty] = useState(1);
   const [requestDesc, setRequestDesc] = useState("");
@@ -52,12 +75,14 @@ export default function SimpleCataloguePage() {
   const [requestSuccess, setRequestSuccess] = useState(false);
   const [requestError, setRequestError] = useState("");
 
-  // Load visitor from localStorage
+  // Load visitor & cart from localStorage
   useEffect(() => {
-    const stored = localStorage.getItem(VISITOR_KEY);
-    if (stored) {
+    const storedVisitor = localStorage.getItem(VISITOR_KEY);
+    if (storedVisitor) {
       try {
-        setVisitorInfo(JSON.parse(stored));
+        const parsed = JSON.parse(storedVisitor);
+        setVisitorInfo(parsed);
+        setVisitorForm(parsed);
       } catch {
         localStorage.removeItem(VISITOR_KEY);
       }
@@ -66,7 +91,24 @@ export default function SimpleCataloguePage() {
       const t = setTimeout(() => setShowVisitorModal(true), 800);
       return () => clearTimeout(t);
     }
+
+    const storedCart = localStorage.getItem(CART_KEY);
+    if (storedCart) {
+      try {
+        setCart(JSON.parse(storedCart));
+      } catch {
+        localStorage.removeItem(CART_KEY);
+      }
+    }
   }, []);
+
+  // Sync cart to localStorage
+  const updateCartState = (newCart: Record<string, CartItem>) => {
+    setCart(newCart);
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(newCart));
+    } catch {}
+  };
 
   // Fetch products and categories
   useEffect(() => {
@@ -154,6 +196,80 @@ export default function SimpleCataloguePage() {
     return getProductPlaceholder(catName, p.name);
   };
 
+  // Cart calculations
+  const cartItemList = useMemo(() => Object.values(cart), [cart]);
+  const totalCartCount = useMemo(
+    () => cartItemList.reduce((sum, item) => sum + item.quantity, 0),
+    [cartItemList]
+  );
+  const totalCartPrice = useMemo(
+    () =>
+      cartItemList.reduce((sum, item) => {
+        const price = item.product.discountPrice || item.product.price || 0;
+        return sum + price * item.quantity;
+      }, 0),
+    [cartItemList]
+  );
+
+  // Card quantity helpers
+  const getCardSelectedQty = (productId: string) => {
+    return cardQuantities[productId] ?? 1;
+  };
+
+  const handleCardQtyChange = (productId: string, delta: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const current = getCardSelectedQty(productId);
+    const next = Math.max(1, current + delta);
+    setCardQuantities((prev) => ({ ...prev, [productId]: next }));
+  };
+
+  // Add to cart from product card
+  const handleAddToCart = (product: IProduct, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const qtyToAdd = getCardSelectedQty(product._id);
+    const existing = cart[product._id]?.quantity || 0;
+    const newCart = {
+      ...cart,
+      [product._id]: {
+        product,
+        quantity: existing + qtyToAdd,
+      },
+    };
+    updateCartState(newCart);
+    setAddedAnimationId(product._id);
+    setTimeout(() => setAddedAnimationId(null), 1500);
+  };
+
+  // Update cart item quantity inside Cart Modal
+  const handleUpdateCartQuantity = (productId: string, delta: number) => {
+    const existing = cart[productId];
+    if (!existing) return;
+    const newQty = existing.quantity + delta;
+    if (newQty <= 0) {
+      const newCart = { ...cart };
+      delete newCart[productId];
+      updateCartState(newCart);
+    } else {
+      updateCartState({
+        ...cart,
+        [productId]: {
+          ...existing,
+          quantity: newQty,
+        },
+      });
+    }
+  };
+
+  const handleRemoveFromCart = (productId: string) => {
+    const newCart = { ...cart };
+    delete newCart[productId];
+    updateCartState(newCart);
+  };
+
+  const handleClearCart = () => {
+    updateCartState({});
+  };
+
   // Save visitor info
   const handleSaveVisitor = (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,11 +288,11 @@ export default function SimpleCataloguePage() {
     setShowVisitorModal(false);
   };
 
-  // Open request modal
+  // Direct single item request modal
   const openRequestModal = (product: IProduct, e: React.MouseEvent) => {
     e.stopPropagation();
     setRequestProduct(product);
-    setRequestQty(1);
+    setRequestQty(getCardSelectedQty(product._id));
     setRequestDesc("");
     setRequestSuccess(false);
     setRequestError("");
@@ -185,8 +301,8 @@ export default function SimpleCataloguePage() {
     }
   };
 
-  // Submit request
-  const handleSubmitRequest = async (e: React.FormEvent) => {
+  // Submit single request
+  const handleSubmitSingleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!requestProduct || !visitorInfo) return;
     setRequestSubmitting(true);
@@ -217,17 +333,80 @@ export default function SimpleCataloguePage() {
     }
   };
 
+  // Submit Cart batch request
+  const handleSubmitCartRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cartItemList.length === 0) return;
+
+    if (!visitorInfo) {
+      setShowVisitorModal(true);
+      return;
+    }
+
+    setCartSubmitting(true);
+    setCartError("");
+    try {
+      const batchItems = cartItemList.map((it) => ({
+        productId: it.product._id,
+        productName: it.product.name,
+        productSku: it.product.sku,
+        quantity: it.quantity,
+      }));
+
+      const res = await fetch("/api/public/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: batchItems,
+          visitorName: visitorInfo.name,
+          visitorPhone: visitorInfo.phone,
+          description: cartNote.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to submit cart request.");
+      }
+
+      setCartSuccessItems([...cartItemList]);
+      setCartSuccess(true);
+      handleClearCart();
+      setCartNote("");
+    } catch (err) {
+      setCartError(err instanceof Error ? err.message : "Something went wrong.");
+    } finally {
+      setCartSubmitting(false);
+    }
+  };
+
+  // WhatsApp enquiry for Cart
+  const getCartWhatsAppUrl = () => {
+    if (cartItemList.length === 0) return `https://wa.me/${WHATSAPP_NUMBER}`;
+    let message = `Hello Dwara Collections, I would like to request/enquire about the following items from my cart:\n\n`;
+    cartItemList.forEach((item, index) => {
+      const price = item.product.discountPrice || item.product.price;
+      message += `${index + 1}. *${item.product.name}*\n   SKU: ${item.product.sku || "N/A"} | Qty: ${item.quantity} | Price: ${formatPrice(price * item.quantity)}\n`;
+    });
+    message += `\n*Total Estimated:* ${formatPrice(totalCartPrice)}`;
+    if (visitorInfo) {
+      message += `\n*Customer:* ${visitorInfo.name} (${visitorInfo.phone})`;
+    }
+    if (cartNote.trim()) {
+      message += `\n*Note:* ${cartNote.trim()}`;
+    }
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFF8FB] dark:bg-[#0d0d0d] text-[#141414] dark:text-[#f5f5f5] transition-colors duration-300">
+    <div className="min-h-screen flex flex-col bg-[#FFF8FB] text-[#141414] transition-colors duration-300">
 
       {/* ── VISITOR INFO MODAL ─────────────────────────────────────── */}
       {showVisitorModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-[#161616] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-3xl max-w-sm w-full p-7 shadow-2xl relative text-left">
-            {/* Skip */}
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white border border-[#F0D6E8] rounded-3xl max-w-sm w-full p-7 shadow-2xl relative text-left">
             <button
               onClick={() => setShowVisitorModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-full text-[#666] hover:text-black dark:text-[#aaa] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition"
+              className="absolute top-4 right-4 p-1.5 rounded-full text-[#666] hover:text-black hover:bg-black/5 transition"
               title="Skip for now"
             >
               <X className="w-4 h-4" />
@@ -237,49 +416,44 @@ export default function SimpleCataloguePage() {
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#B81862] to-[#d43d8a] flex items-center justify-center mx-auto mb-4 shadow-lg text-white">
                 <User className="w-7 h-7" />
               </div>
-              <h2 className="font-serif text-xl font-bold text-[#111111] dark:text-white">Welcome to Dwara Collections</h2>
-              <p className="text-xs text-[#555047] dark:text-[#aaa] mt-1.5 leading-relaxed">
+              <h2 className="font-serif text-xl font-bold text-[#111111]">Welcome to Dwara Collections</h2>
+              <p className="text-xs text-[#555047] mt-1.5 leading-relaxed">
                 Enter your details to browse and request items from our exclusive collection.
               </p>
             </div>
 
             <form onSubmit={handleSaveVisitor} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1.5">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] mb-1.5">
                   Your Name *
                 </label>
                 <input
                   type="text"
+                  required
                   value={visitorForm.name}
-                  onChange={(e) => {
-                    setVisitorForm((f) => ({ ...f, name: e.target.value }));
-                    setVisitorFormError("");
-                  }}
+                  onChange={(e) => setVisitorForm({ ...visitorForm, name: e.target.value })}
                   placeholder="e.g. Priya Sharma"
-                  autoFocus
-                  className="w-full px-4 py-2.5 bg-[#FDF0F6] dark:bg-[#1e1e1e] border border-[#D0C7B8] dark:border-[#333] rounded-xl text-sm text-[#111111] dark:text-white placeholder-[#888] dark:placeholder-[#666] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] transition"
+                  className="w-full px-4 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs text-[#111111] placeholder-[#888] focus:outline-none focus:border-[#B81862] transition"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1.5">
-                  Phone Number *
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] mb-1.5">
+                  Phone / WhatsApp Number *
                 </label>
                 <input
                   ref={phoneRef}
                   type="tel"
+                  required
                   value={visitorForm.phone}
-                  onChange={(e) => {
-                    setVisitorForm((f) => ({ ...f, phone: e.target.value }));
-                    setVisitorFormError("");
-                  }}
-                  placeholder="e.g. 9876543210"
-                  className="w-full px-4 py-2.5 bg-[#FDF0F6] dark:bg-[#1e1e1e] border border-[#D0C7B8] dark:border-[#333] rounded-xl text-sm text-[#111111] dark:text-white placeholder-[#888] dark:placeholder-[#666] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] transition"
+                  onChange={(e) => setVisitorForm({ ...visitorForm, phone: e.target.value })}
+                  placeholder="e.g. +91 98765 43210"
+                  className="w-full px-4 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs text-[#111111] placeholder-[#888] focus:outline-none focus:border-[#B81862] transition font-mono"
                 />
               </div>
 
               {visitorFormError && (
-                <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
+                <p className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   {visitorFormError}
                 </p>
@@ -287,43 +461,326 @@ export default function SimpleCataloguePage() {
 
               <button
                 type="submit"
-                className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-black font-bold text-sm shadow-md hover:opacity-90 transition cursor-pointer"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-sm shadow-md hover:opacity-95 transition cursor-pointer"
               >
-                Continue to Catalogue
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowVisitorModal(false)}
-                className="w-full py-2 text-xs text-[#666] dark:text-[#aaa] hover:text-black dark:hover:text-white transition cursor-pointer"
-              >
-                Skip for now
+                Save Details &amp; Continue
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* ── REQUEST ITEM MODAL ─────────────────────────────────────── */}
+      {/* ── CART MODAL / DRAWER ────────────────────────────────────── */}
+      {showCartModal && (
+        <div
+          className="fixed inset-0 z-[65] flex items-center justify-center sm:justify-end p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => {
+            if (!cartSubmitting) setShowCartModal(false);
+          }}
+        >
+          <div
+            className="bg-white border-l sm:border border-[#F0D6E8] sm:rounded-3xl w-full max-w-lg h-full sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-left"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-5 border-b border-[#F0D6E8] flex items-center justify-between bg-[#FFF8FB] shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#B81862] text-white flex items-center justify-center shadow-xs">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="font-serif text-lg font-bold text-[#111111]">Your Selected Items</h2>
+                  <p className="text-[11px] text-[#7A5E6A]">
+                    {totalCartCount} {totalCartCount === 1 ? "piece" : "pieces"} selected for request
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {cartItemList.length > 0 && !cartSuccess && (
+                  <button
+                    type="button"
+                    onClick={handleClearCart}
+                    className="text-[11px] text-[#B81862] hover:underline font-semibold px-2 py-1"
+                  >
+                    Clear All
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowCartModal(false)}
+                  className="p-1.5 rounded-full text-[#666] hover:text-black hover:bg-black/5 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {cartSuccess ? (
+                <div className="py-8 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
+                    <Check className="w-8 h-8 text-emerald-600" />
+                  </div>
+                  <h3 className="font-serif text-xl font-bold text-[#111111]">Cart Request Submitted!</h3>
+                  <p className="text-xs text-[#555047] max-w-sm mx-auto leading-relaxed">
+                    Thank you, <span className="font-semibold text-[#111111]">{visitorInfo?.name}</span>! We have received your request for{" "}
+                    <span className="font-semibold text-[#B81862]">{cartSuccessItems.length} jewellery item(s)</span>. Our luxury concierge will contact you at{" "}
+                    <span className="font-semibold text-[#111111]">{visitorInfo?.phone}</span> shortly.
+                  </p>
+
+                  {/* Summary of submitted items */}
+                  <div className="mt-4 p-4 bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] text-left space-y-2 max-h-48 overflow-y-auto">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A5E6A] block mb-1">
+                      Requested Pieces
+                    </span>
+                    {cartSuccessItems.map((it) => (
+                      <div key={it.product._id} className="flex items-center justify-between text-xs py-1 border-b border-[#F0D6E8]/60 last:border-none">
+                        <span className="font-medium text-[#111111] truncate max-w-[200px]">{it.product.name}</span>
+                        <span className="font-mono text-[11px] text-[#B81862] font-semibold">Qty: {it.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      onClick={() => {
+                        setCartSuccess(false);
+                        setShowCartModal(false);
+                      }}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#B81862] text-white font-bold text-xs shadow-md hover:opacity-90 transition cursor-pointer"
+                    >
+                      Continue Browsing
+                    </button>
+                    <a
+                      href={getCartWhatsAppUrl()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#25D366] text-white font-bold text-xs shadow-md hover:bg-[#20ba59] transition flex items-center justify-center gap-1.5"
+                    >
+                      <MessageCircle className="w-4 h-4 fill-white" />
+                      <span>Chat on WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+              ) : cartItemList.length === 0 ? (
+                <div className="py-16 text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-[#FFF8FB] border border-[#F0D6E8] flex items-center justify-center mx-auto text-[#B81862]">
+                    <ShoppingBag className="w-7 h-7" />
+                  </div>
+                  <h3 className="font-serif text-base font-bold text-[#111111]">Your cart is currently empty</h3>
+                  <p className="text-xs text-[#7A5E6A] max-w-xs mx-auto">
+                    Browse our catalogue and use the <span className="font-bold text-[#B81862]">+</span> and <span className="font-bold text-[#B81862]">-</span> buttons to add items to your selection.
+                  </p>
+                  <button
+                    onClick={() => setShowCartModal(false)}
+                    className="mt-2 px-5 py-2 rounded-xl bg-[#B81862] text-white text-xs font-bold hover:opacity-90 transition cursor-pointer"
+                  >
+                    Explore Jewellery
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Items List */}
+                  <div className="space-y-3">
+                    {cartItemList.map((item) => {
+                      const p = item.product;
+                      const price = p.discountPrice || p.price;
+                      const lineTotal = price * item.quantity;
+
+                      return (
+                        <div
+                          key={p._id}
+                          className="flex items-center gap-3 p-3 bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] hover:border-[#B81862]/40 transition"
+                        >
+                          {/* Thumbnail */}
+                          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-white border border-[#F0D6E8]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={getPrimaryImage(p)}
+                              alt={p.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-serif font-bold text-xs text-[#111111] truncate">{p.name}</h4>
+                            <p className="text-[10px] text-[#7A5E6A] font-mono mt-0.5">SKU: {p.sku || "N/A"}</p>
+                            <div className="flex items-baseline gap-1.5 mt-1">
+                              <span className="font-bold text-xs text-[#B81862]">{formatPrice(price)}</span>
+                              {item.quantity > 1 && (
+                                <span className="text-[10px] text-[#7A5E6A]">({formatPrice(lineTotal)} total)</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Quantity Controls */}
+                          <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#F0D6E8] shrink-0 shadow-xs">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateCartQuantity(p._id, -1)}
+                              className="w-7 h-7 rounded-lg bg-[#FFF8FB] hover:bg-[#FDF0F6] text-[#B81862] flex items-center justify-center transition cursor-pointer"
+                              title="Decrease"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="w-6 text-center font-bold text-xs text-[#141414]">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateCartQuantity(p._id, 1)}
+                              className="w-7 h-7 rounded-lg bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white flex items-center justify-center hover:opacity-90 transition cursor-pointer"
+                              title="Increase"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+
+                          {/* Trash */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFromCart(p._id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 transition"
+                            title="Remove"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Customer Information Preview / Quick Edit */}
+                  <div className="p-3.5 bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#7A5E6A]">
+                        Customer Details
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowVisitorModal(true)}
+                        className="text-[11px] text-[#B81862] font-semibold hover:underline"
+                      >
+                        {visitorInfo ? "Edit Details" : "Add Details"}
+                      </button>
+                    </div>
+
+                    {visitorInfo ? (
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white p-2 rounded-xl border border-[#F0D6E8]">
+                          <span className="text-[10px] text-[#7A5E6A] block">Name</span>
+                          <span className="font-semibold text-[#111111] truncate block">{visitorInfo.name}</span>
+                        </div>
+                        <div className="bg-white p-2 rounded-xl border border-[#F0D6E8]">
+                          <span className="text-[10px] text-[#7A5E6A] block">Phone</span>
+                          <span className="font-semibold text-[#111111] font-mono truncate block">{visitorInfo.phone}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-amber-700 bg-amber-50 p-2 rounded-xl border border-amber-200">
+                        Please provide your name and phone number so our concierge can reach you.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Special Note */}
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] mb-1">
+                      Special Notes / Customisation Requests <span className="text-[#888] font-normal normal-case">(optional)</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={cartNote}
+                      onChange={(e) => setCartNote(e.target.value)}
+                      placeholder="e.g. Ring size preferences, custom engraving, or bridal timeline..."
+                      className="w-full px-3.5 py-2 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs text-[#111111] placeholder-[#888] focus:outline-none focus:border-[#B81862] transition resize-none"
+                    />
+                  </div>
+
+                  {cartError && (
+                    <p className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {cartError}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer / Actions */}
+            {cartItemList.length > 0 && !cartSuccess && (
+              <div className="p-5 border-t border-[#F0D6E8] bg-[#FFF8FB] space-y-3 shrink-0">
+                {/* Order Summary */}
+                <div className="flex items-baseline justify-between">
+                  <div>
+                    <span className="text-xs text-[#7A5E6A] block font-medium">Estimated Total ({totalCartCount} items)</span>
+                    <span className="font-serif text-xl font-bold text-[#B81862]">{formatPrice(totalCartPrice)}</span>
+                  </div>
+                  <span className="text-[10px] text-[#7A5E6A] bg-white px-2.5 py-1 rounded-full border border-[#F0D6E8]">
+                    No immediate payment
+                  </span>
+                </div>
+
+                {/* Main Action Buttons */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Submit Official Request */}
+                  <button
+                    type="button"
+                    onClick={handleSubmitCartRequest}
+                    disabled={cartSubmitting}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-xs shadow-md hover:opacity-95 transition disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {cartSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Sending Request...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag className="w-4 h-4" />
+                        <span>Request All Items ({totalCartCount})</span>
+                      </>
+                    )}
+                  </button>
+
+                  {/* Send via WhatsApp */}
+                  <a
+                    href={getCartWhatsAppUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 rounded-xl bg-[#25D366] text-white font-bold text-xs shadow-md hover:bg-[#20ba59] transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-white" />
+                    <span>WhatsApp Enquire</span>
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── SINGLE DIRECT REQUEST ITEM MODAL ───────────────────────── */}
       {requestProduct && visitorInfo && (
         <div
-          className="fixed inset-0 z-[55] flex items-center justify-center p-4 bg-black/50 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => {
             if (!requestSubmitting) setRequestProduct(null);
           }}
         >
           <div
-            className="bg-white dark:bg-[#161616] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl text-left"
+            className="bg-white border border-[#F0D6E8] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl text-left"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-5">
               <div>
-                <h2 className="font-serif text-lg font-bold text-[#111111] dark:text-white">Request Item</h2>
-                <p className="text-xs text-[#555047] dark:text-[#aaa] mt-0.5">Submit a request and our concierge will contact you</p>
+                <h2 className="font-serif text-lg font-bold text-[#111111]">Direct Item Request</h2>
+                <p className="text-xs text-[#555047] mt-0.5">Submit a request and our concierge will contact you</p>
               </div>
               {!requestSubmitting && (
                 <button
                   onClick={() => setRequestProduct(null)}
-                  className="p-1.5 rounded-full text-[#666] hover:text-black dark:text-[#aaa] dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5 transition"
+                  className="p-1.5 rounded-full text-[#666] hover:text-black hover:bg-black/5 transition"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -333,88 +790,88 @@ export default function SimpleCataloguePage() {
             {requestSuccess ? (
               <div className="text-center py-6 space-y-4">
                 <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
-                  <Check className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                  <Check className="w-8 h-8 text-emerald-600" />
                 </div>
-                <h3 className="font-serif text-lg font-bold text-[#111111] dark:text-white">Request Submitted!</h3>
-                <p className="text-xs text-[#555047] dark:text-[#aaa] leading-relaxed">
-                  Thank you, <span className="text-[#111111] dark:text-white font-semibold">{visitorInfo.name}</span>! We&apos;ll contact you at{" "}
-                  <span className="text-[#B81862] dark:text-[#d43d8a] font-semibold">{visitorInfo.phone}</span> regarding{" "}
-                  <span className="text-[#111111] dark:text-white font-semibold">{requestProduct.name}</span>.
+                <h3 className="font-serif text-lg font-bold text-[#111111]">Request Submitted!</h3>
+                <p className="text-xs text-[#555047] leading-relaxed">
+                  Thank you, <span className="text-[#111111] font-semibold">{visitorInfo.name}</span>! We&apos;ll contact you at{" "}
+                  <span className="text-[#B81862] font-semibold">{visitorInfo.phone}</span> regarding{" "}
+                  <span className="text-[#111111] font-semibold">{requestProduct.name}</span>.
                 </p>
                 <button
                   onClick={() => setRequestProduct(null)}
-                  className="px-6 py-2.5 rounded-xl bg-[#FDE8F2] dark:bg-[#1e1e1e] border border-[#D5CEC2] dark:border-[#333] text-sm font-semibold text-[#111111] dark:text-white hover:border-[#B81862] transition cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-[#FDE8F2] border border-[#F0D6E8] text-sm font-semibold text-[#111111] hover:border-[#B81862] transition cursor-pointer"
                 >
                   Close
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmitRequest} className="space-y-4">
+              <form onSubmit={handleSubmitSingleRequest} className="space-y-4">
                 {/* Product Info */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#F8F5EE] dark:bg-[#1e1e1e] border border-[#E0D8CC] dark:border-[#2a2a2a]">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-[#E0D8CC] dark:bg-[#111]">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-[#FFF8FB] border border-[#F0D6E8]">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-white border border-[#F0D6E8]">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={getPrimaryImage(requestProduct)} alt={requestProduct.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="min-w-0">
-                    <p className="font-semibold text-[#111111] dark:text-white text-sm truncate">{requestProduct.name}</p>
-                    <p className="text-xs text-[#555047] dark:text-[#aaa] font-mono">SKU: {requestProduct.sku}</p>
+                    <p className="font-semibold text-[#111111] text-sm truncate">{requestProduct.name}</p>
+                    <p className="text-xs text-[#7A5E6A] font-mono">SKU: {requestProduct.sku || "N/A"}</p>
                   </div>
                 </div>
 
                 {/* Customer Info (read-only) */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 rounded-xl bg-[#F8F5EE] dark:bg-[#1a1a1a] border border-[#E0D8CC] dark:border-[#262626]">
-                    <p className="text-[10px] text-[#665F55] dark:text-[#888] uppercase tracking-wider font-semibold mb-0.5">Your Name</p>
-                    <p className="text-sm font-semibold text-[#111111] dark:text-white truncate">{visitorInfo.name}</p>
+                  <div className="p-3 rounded-xl bg-[#FFF8FB] border border-[#F0D6E8]">
+                    <p className="text-[10px] text-[#7A5E6A] uppercase tracking-wider font-semibold mb-0.5">Your Name</p>
+                    <p className="text-sm font-semibold text-[#111111] truncate">{visitorInfo.name}</p>
                   </div>
-                  <div className="p-3 rounded-xl bg-[#F8F5EE] dark:bg-[#1a1a1a] border border-[#E0D8CC] dark:border-[#262626]">
-                    <p className="text-[10px] text-[#665F55] dark:text-[#888] uppercase tracking-wider font-semibold mb-0.5">Phone</p>
-                    <p className="text-sm font-semibold text-[#111111] dark:text-white font-mono">{visitorInfo.phone}</p>
+                  <div className="p-3 rounded-xl bg-[#FFF8FB] border border-[#F0D6E8]">
+                    <p className="text-[10px] text-[#7A5E6A] uppercase tracking-wider font-semibold mb-0.5">Phone</p>
+                    <p className="text-sm font-semibold text-[#111111] font-mono">{visitorInfo.phone}</p>
                   </div>
                 </div>
 
                 {/* Quantity */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-2">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] mb-2">
                     Quantity *
                   </label>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={() => setRequestQty(Math.max(1, requestQty - 1))}
-                      className="w-9 h-9 rounded-xl bg-[#FDE8F2] dark:bg-[#1e1e1e] border border-[#D5CEC2] dark:border-[#333] text-[#111111] dark:text-white flex items-center justify-center hover:border-[#B81862] transition cursor-pointer"
+                      className="w-9 h-9 rounded-xl bg-[#FFF8FB] border border-[#F0D6E8] text-[#111111] flex items-center justify-center hover:border-[#B81862] transition cursor-pointer font-bold"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-12 text-center font-bold text-lg text-[#111111] dark:text-white">{requestQty}</span>
+                    <span className="w-12 text-center font-bold text-lg text-[#111111]">{requestQty}</span>
                     <button
                       type="button"
                       onClick={() => setRequestQty(requestQty + 1)}
-                      className="w-9 h-9 rounded-xl bg-[#FDE8F2] dark:bg-[#1e1e1e] border border-[#D5CEC2] dark:border-[#333] text-[#111111] dark:text-white flex items-center justify-center hover:border-[#B81862] transition cursor-pointer"
+                      className="w-9 h-9 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white flex items-center justify-center hover:opacity-90 transition cursor-pointer font-bold"
                     >
                       <Plus className="w-4 h-4" />
                     </button>
-                    <span className="text-xs text-[#665F55] dark:text-[#aaa]">piece{requestQty > 1 ? "s" : ""}</span>
+                    <span className="text-xs text-[#7A5E6A]">piece{requestQty > 1 ? "s" : ""}</span>
                   </div>
                 </div>
 
                 {/* Description (optional) */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1.5">
-                    Note / Special Request <span className="text-[#777] dark:text-[#888] normal-case font-normal">(optional)</span>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] mb-1.5">
+                    Note / Special Request <span className="text-[#888] normal-case font-normal">(optional)</span>
                   </label>
                   <textarea
                     rows={3}
                     value={requestDesc}
                     onChange={(e) => setRequestDesc(e.target.value)}
                     placeholder="Any specific requirements, customisation, or questions..."
-                    className="w-full px-4 py-2.5 bg-[#FDF0F6] dark:bg-[#1e1e1e] border border-[#D0C7B8] dark:border-[#333] rounded-xl text-xs text-[#111111] dark:text-white placeholder-[#888] dark:placeholder-[#666] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] transition resize-none"
+                    className="w-full px-4 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs text-[#111111] placeholder-[#888] focus:outline-none focus:border-[#B81862] transition resize-none"
                   />
                 </div>
 
                 {requestError && (
-                  <p className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
+                  <p className="flex items-center gap-1.5 text-xs text-red-600 font-medium">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                     {requestError}
                   </p>
@@ -423,7 +880,7 @@ export default function SimpleCataloguePage() {
                 <button
                   type="submit"
                   disabled={requestSubmitting}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-black font-bold text-sm shadow-md hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-sm shadow-md hover:opacity-95 transition disabled:opacity-60 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   {requestSubmitting ? (
                     <>
@@ -444,7 +901,7 @@ export default function SimpleCataloguePage() {
       )}
 
       {/* ── HEADER ────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#0d0d0d]/95 backdrop-blur-md border-b border-[#E8E2D8] dark:border-[#222] transition-colors duration-300 shadow-xs">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#F0D6E8] shadow-xs">
         {/* Top Gold Banner */}
         <div className="bg-[#181512] text-[#FFF8FB] py-1 px-4 text-[10px] sm:text-xs font-medium text-center tracking-widest uppercase flex items-center justify-center gap-2">
           <Sparkles className="w-3 h-3 text-[#d43d8a]" />
@@ -464,19 +921,19 @@ export default function SimpleCataloguePage() {
           {/* Search Bar - Desktop */}
           <div className="flex-1 max-w-md hidden sm:block">
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#666] dark:text-[#888] pointer-events-none" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#7A5E6A] pointer-events-none" />
               <input
                 id="search-input"
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search products by name or description..."
-                className="w-full pl-10 pr-4 py-2 bg-[#FDF0F6] dark:bg-[#1c1c1c] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-full text-sm text-[#111111] dark:text-white placeholder-[#777] dark:placeholder-[#888] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862] shadow-xs transition"
+                placeholder="Search jewellery by name or collection..."
+                className="w-full pl-10 pr-4 py-2 bg-[#FFF8FB] border border-[#F0D6E8] rounded-full text-sm text-[#111111] placeholder-[#7A5E6A] focus:outline-none focus:border-[#B81862] shadow-xs transition"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-black dark:hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A5E6A] hover:text-black"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -485,12 +942,27 @@ export default function SimpleCataloguePage() {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2 sm:gap-2.5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Header Cart Button with Badge */}
+            <button
+              id="header-cart-btn"
+              onClick={() => setShowCartModal(true)}
+              className="relative flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[#B81862] text-white shadow-sm hover:opacity-95 transition cursor-pointer"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Cart</span>
+              {totalCartCount > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-white text-[#B81862] text-[11px] font-extrabold rounded-full shadow-xs">
+                  {totalCartCount}
+                </span>
+              )}
+            </button>
+
             {/* Visitor Account Button */}
             {visitorInfo ? (
               <button
                 onClick={() => setShowVisitorModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FDF0F6] dark:bg-[#1e1e1e] text-[#B81862] dark:text-[#d43d8a] border border-[#B81862]/30 dark:border-[#B81862]/30 hover:border-[#B81862] shadow-xs transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FFF8FB] text-[#B81862] border border-[#F0D6E8] hover:border-[#B81862] shadow-xs transition cursor-pointer"
               >
                 <User className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline max-w-[100px] truncate">{visitorInfo.name}</span>
@@ -498,7 +970,7 @@ export default function SimpleCataloguePage() {
             ) : (
               <button
                 onClick={() => setShowVisitorModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FDF0F6] dark:bg-[#1e1e1e] text-[#332E29] dark:text-[#ccc] border border-[#D5CEC2] dark:border-[#2e2e2e] hover:border-[#B81862] hover:text-[#B81862] shadow-xs transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FFF8FB] text-[#332E29] border border-[#F0D6E8] hover:border-[#B81862] hover:text-[#B81862] shadow-xs transition cursor-pointer"
               >
                 <User className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Sign In</span>
@@ -511,7 +983,7 @@ export default function SimpleCataloguePage() {
               href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hi! I am interested in your jewellery catalogue.`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#25D366]/15 text-[#1b9e4b] dark:text-[#25D366] border border-[#25D366]/30 hover:bg-[#25D366]/25 shadow-xs transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#25D366]/15 text-[#1b9e4b] border border-[#25D366]/30 hover:bg-[#25D366]/25 shadow-xs transition"
             >
               <MessageCircle className="w-3.5 h-3.5" />
               <span className="hidden md:inline">WhatsApp</span>
@@ -521,10 +993,10 @@ export default function SimpleCataloguePage() {
             <Link
               id="admin-login-link"
               href="/admin/login"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FDF0F6] dark:bg-[#1e1e1e] text-[#332E29] dark:text-[#aaa] border border-[#D5CEC2] dark:border-[#2e2e2e] hover:text-[#B81862] hover:border-[#B81862] shadow-xs transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#FFF8FB] text-[#332E29] border border-[#F0D6E8] hover:text-[#B81862] hover:border-[#B81862] shadow-xs transition"
             >
-              <Lock className="w-3 h-3 text-[#B81862] dark:text-[#B81862]" />
-              <span>Admin</span>
+              <Lock className="w-3 h-3 text-[#B81862]" />
+              <span className="hidden sm:inline">Admin</span>
             </Link>
           </div>
         </div>
@@ -532,18 +1004,18 @@ export default function SimpleCataloguePage() {
         {/* Mobile Search */}
         <div className="sm:hidden px-4 pb-3">
           <div className="relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#666] dark:text-[#888] pointer-events-none" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7A5E6A] pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search products..."
-              className="w-full pl-9 pr-8 py-1.5 bg-[#FDF0F6] dark:bg-[#1c1c1c] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-full text-xs text-[#111111] dark:text-white placeholder-[#777] dark:placeholder-[#888] focus:outline-none focus:border-[#B81862] dark:focus:border-[#B81862]"
+              placeholder="Search jewellery..."
+              className="w-full pl-9 pr-8 py-1.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-full text-xs text-[#111111] placeholder-[#7A5E6A] focus:outline-none focus:border-[#B81862]"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#777] hover:text-black dark:hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#7A5E6A] hover:text-black"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -553,16 +1025,16 @@ export default function SimpleCataloguePage() {
       </header>
 
       {/* ── HERO & CATEGORY BAR ────────────────────────────────────── */}
-      <section className="border-b border-[#E8E2D8] dark:border-[#222] bg-gradient-to-b from-[#F5EFE6] via-[#FAF7F2] to-[#FFF8FB] dark:from-[#141414] dark:to-[#0d0d0d] py-8 sm:py-10 px-4 text-center transition-colors duration-300">
+      <section className="border-b border-[#F0D6E8] bg-gradient-to-b from-[#FDF0F6] via-[#FFF8FB] to-[#FFF8FB] py-8 sm:py-10 px-4 text-center">
         <div className="max-w-3xl mx-auto">
-          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[#B81862]/10 dark:bg-[#B81862]/15 text-[#B81862] dark:text-[#d43d8a] border border-[#B81862]/25 dark:border-[#B81862]/30 mb-3">
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-semibold bg-[#B81862]/10 text-[#B81862] border border-[#B81862]/25 mb-3">
             <Sparkles className="w-3.5 h-3.5" />
             Curated Jewellery Collection
           </span>
-          <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#111111] dark:text-white tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-[#111111] tracking-tight">
             Explore Our Catalogue
           </h1>
-          <p className="mt-2 text-sm text-[#555047] dark:text-[#aaa] max-w-xl mx-auto">
+          <p className="mt-2 text-sm text-[#555047] max-w-xl mx-auto">
             Browse our handcrafted gold, natural solitaires, and heirloom bridal pieces. Each item is BIS hallmarked and certified.
           </p>
         </div>
@@ -574,8 +1046,8 @@ export default function SimpleCataloguePage() {
               onClick={() => setSelectedCategory("all")}
               className={`px-4 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap shadow-xs cursor-pointer ${
                 selectedCategory === "all"
-                  ? "bg-[#B81862] dark:bg-[#B81862] text-white dark:text-black font-bold shadow-md"
-                  : "bg-white dark:bg-[#1a1a1a] text-[#332E29] dark:text-[#aaa] hover:text-black dark:hover:text-white hover:bg-[#FDE8F2] dark:hover:bg-[#252525] border border-[#D5CEC2] dark:border-[#282828]"
+                  ? "bg-[#B81862] text-white font-bold shadow-md"
+                  : "bg-white text-[#332E29] hover:text-black hover:bg-[#FDF0F6] border border-[#F0D6E8]"
               }`}
             >
               All Products ({products.length})
@@ -586,8 +1058,8 @@ export default function SimpleCataloguePage() {
                 onClick={() => setSelectedCategory(cat._id)}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap shadow-xs cursor-pointer ${
                   selectedCategory === cat._id
-                    ? "bg-[#B81862] dark:bg-[#B81862] text-white dark:text-black font-bold shadow-md"
-                    : "bg-white dark:bg-[#1a1a1a] text-[#332E29] dark:text-[#aaa] hover:text-black dark:hover:text-white hover:bg-[#FDE8F2] dark:hover:bg-[#252525] border border-[#D5CEC2] dark:border-[#282828]"
+                    ? "bg-[#B81862] text-white font-bold shadow-md"
+                    : "bg-white text-[#332E29] hover:text-black hover:bg-[#FDF0F6] border border-[#F0D6E8]"
                 }`}
               >
                 {cat.name}
@@ -598,36 +1070,45 @@ export default function SimpleCataloguePage() {
       </section>
 
       {/* ── PRODUCT GRID ──────────────────────────────────────────── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-28">
         <div className="flex items-center justify-between mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#665F55] dark:text-[#aaa]">
-            Showing <span className="text-[#111111] dark:text-white font-bold">{filteredProducts.length}</span> items
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#7A5E6A]">
+            Showing <span className="text-[#111111] font-bold">{filteredProducts.length}</span> items
             {selectedCategory !== "all" && (
               <>
                 {" "}
-                in <span className="text-[#B81862] dark:text-[#d43d8a] font-bold">{categories.find((c) => c._id === selectedCategory)?.name}</span>
+                in <span className="text-[#B81862] font-bold">{categories.find((c) => c._id === selectedCategory)?.name}</span>
               </>
             )}
           </p>
+          {totalCartCount > 0 && (
+            <button
+              onClick={() => setShowCartModal(true)}
+              className="text-xs font-bold text-[#B81862] hover:underline flex items-center gap-1"
+            >
+              <span>View Cart ({totalCartCount})</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className="bg-white dark:bg-[#161616] rounded-2xl border border-[#E5DFD4] dark:border-[#222] p-4 animate-pulse space-y-3 shadow-xs">
-                <div className="w-full aspect-square bg-[#ECE6DC] dark:bg-[#222] rounded-xl" />
-                <div className="h-4 bg-[#ECE6DC] dark:bg-[#252525] rounded w-3/4" />
-                <div className="h-5 bg-[#ECE6DC] dark:bg-[#252525] rounded w-1/2" />
-                <div className="h-3 bg-[#ECE6DC] dark:bg-[#252525] rounded w-1/3" />
-                <div className="h-3 bg-[#ECE6DC] dark:bg-[#252525] rounded w-full" />
+              <div key={i} className="bg-white rounded-2xl border border-[#F0D6E8] p-4 animate-pulse space-y-3 shadow-xs">
+                <div className="w-full aspect-square bg-[#FDF0F6] rounded-xl" />
+                <div className="h-4 bg-[#FDF0F6] rounded w-3/4" />
+                <div className="h-5 bg-[#FDF0F6] rounded w-1/2" />
+                <div className="h-3 bg-[#FDF0F6] rounded w-1/3" />
+                <div className="h-3 bg-[#FDF0F6] rounded w-full" />
               </div>
             ))}
           </div>
         ) : filteredProducts.length === 0 ? (
-          <div className="py-20 text-center bg-white dark:bg-[#141414] rounded-2xl border border-[#E5DFD4] dark:border-[#222] max-w-md mx-auto p-6 shadow-sm">
-            <Package className="w-12 h-12 text-[#888] dark:text-[#555] mx-auto mb-3" />
-            <h3 className="font-serif text-lg font-bold text-[#111111] dark:text-white mb-1">No products found</h3>
-            <p className="text-xs text-[#555047] dark:text-[#aaa] mb-4">
+          <div className="py-20 text-center bg-white rounded-2xl border border-[#F0D6E8] max-w-md mx-auto p-6 shadow-sm">
+            <Package className="w-12 h-12 text-[#888] mx-auto mb-3" />
+            <h3 className="font-serif text-lg font-bold text-[#111111] mb-1">No products found</h3>
+            <p className="text-xs text-[#555047] mb-4">
               {search
                 ? `No products matched "${search}". Try searching another name.`
                 : "No items available in this category yet."}
@@ -638,7 +1119,7 @@ export default function SimpleCataloguePage() {
                   setSearch("");
                   setSelectedCategory("all");
                 }}
-                className="px-4 py-2 bg-[#FDE8F2] dark:bg-[#222] hover:bg-[#E2DDD3] dark:hover:bg-[#333] text-xs font-semibold rounded-lg text-[#111111] dark:text-white transition cursor-pointer"
+                className="px-4 py-2 bg-[#FDE8F2] hover:bg-[#FDF0F6] text-xs font-semibold rounded-lg text-[#111111] transition cursor-pointer"
               >
                 Clear Filters
               </button>
@@ -648,18 +1129,22 @@ export default function SimpleCataloguePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {filteredProducts.map((product) => {
               const imageUrl = getPrimaryImage(product);
-              const qty = product.quantity ?? 10;
-              const isLowStock = qty > 0 && qty <= 3;
-              const isOutOfStock = qty <= 0 || product.stockStatus === "out_of_stock";
+              const stockQty = product.quantity ?? 10;
+              const isLowStock = stockQty > 0 && stockQty <= 3;
+              const isOutOfStock = stockQty <= 0 || product.stockStatus === "out_of_stock";
+
+              const cardSelectedQty = getCardSelectedQty(product._id);
+              const inCartQty = cart[product._id]?.quantity || 0;
+              const wasJustAdded = addedAnimationId === product._id;
 
               return (
                 <div
                   key={product._id}
                   onClick={() => setSelectedProduct(product)}
-                  className="group bg-white dark:bg-[#161616] hover:bg-[#FFF8FB] dark:hover:bg-[#1b1b1b] rounded-2xl border border-[#E5DFD4] dark:border-[#262626] hover:border-[#B81862]/60 dark:hover:border-[#B81862]/60 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.05)] hover:shadow-[0_10px_30px_rgba(153,101,21,0.18)]"
+                  className="group bg-white hover:bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] hover:border-[#B81862]/60 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_30px_rgba(184,24,98,0.12)]"
                 >
-                  {/* Image */}
-                  <div className="relative w-full aspect-square bg-[#F5F2EC] dark:bg-[#101010] overflow-hidden">
+                  {/* Image Stage */}
+                  <div className="relative w-full aspect-square bg-[#FDF0F6] overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={imageUrl}
@@ -667,19 +1152,30 @@ export default function SimpleCataloguePage() {
                       loading="lazy"
                       className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
                     />
+
+                    {/* In-cart badge */}
+                    {inCartQty > 0 && (
+                      <div className="absolute top-3 left-3">
+                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B81862] text-white shadow-md flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          {inCartQty} in cart
+                        </span>
+                      </div>
+                    )}
+
                     {/* Stock badge */}
                     <div className="absolute top-3 right-3">
                       {isOutOfStock ? (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-red-100 dark:bg-red-900/80 text-red-800 dark:text-red-200 border border-red-300 dark:border-red-700/50 backdrop-blur-sm shadow-xs">
+                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-red-100 text-red-800 border border-red-300 backdrop-blur-sm shadow-xs">
                           Out of Stock
                         </span>
                       ) : isLowStock ? (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 dark:bg-amber-900/80 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/50 backdrop-blur-sm shadow-xs">
-                          Only {qty} left!
+                        <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300 backdrop-blur-sm shadow-xs">
+                          Only {stockQty} left!
                         </span>
                       ) : (
-                        <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50/95 dark:bg-black/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 backdrop-blur-sm shadow-xs">
-                          {qty} available
+                        <span className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 backdrop-blur-sm shadow-xs">
+                          {stockQty} available
                         </span>
                       )}
                     </div>
@@ -697,77 +1193,123 @@ export default function SimpleCataloguePage() {
                         const cName =
                           catObj?.name || categories.find((c) => c._id === product.categoryId)?.name;
                         return cName ? (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#B81862] dark:text-[#d43d8a] block mb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#B81862] block mb-1">
                             {cName}
                           </span>
                         ) : null;
                       })()}
 
-                      <h2 className="font-serif font-bold text-base text-[#111111] dark:text-white group-hover:text-[#B81862] dark:group-hover:text-[#d43d8a] transition-colors line-clamp-1">
+                      <h2 className="font-serif font-bold text-base text-[#111111] group-hover:text-[#B81862] transition-colors line-clamp-1">
                         {product.name}
                       </h2>
 
                       {/* Price */}
                       <div className="mt-1.5 flex items-baseline gap-2">
-                        <span className="font-bold text-lg text-[#B81862] dark:text-[#d43d8a]">
+                        <span className="font-bold text-lg text-[#B81862]">
                           {formatPrice(product.price)}
                         </span>
                         {product.discountPrice && (
-                          <span className="text-xs text-[#777] dark:text-[#888] line-through">
+                          <span className="text-xs text-[#777] line-through">
                             {formatPrice(product.discountPrice)}
                           </span>
                         )}
                       </div>
 
-                      {/* Quantity */}
-                      <div className="mt-2 flex items-center gap-1.5 text-xs">
-                        <Package className="w-3.5 h-3.5 text-[#B81862] dark:text-[#B81862]" />
-                        <span className="text-[#665F55] dark:text-[#aaa]">Quantity:</span>
-                        <span
-                          className={`font-semibold ${
-                            isOutOfStock
-                              ? "text-red-600 dark:text-red-400"
-                              : isLowStock
-                              ? "text-amber-700 dark:text-amber-400"
-                              : "text-emerald-700 dark:text-emerald-400"
-                          }`}
-                        >
-                          {isOutOfStock ? "Out of Stock" : `${qty} units`}
-                        </span>
+                      {/* Quantity & SKU */}
+                      <div className="mt-1 flex items-center justify-between text-xs text-[#7A5E6A]">
+                        <span className="font-mono text-[11px]">SKU: {product.sku || "N/A"}</span>
+                        <span>{stockQty} in stock</span>
                       </div>
 
                       {/* Description */}
-                      <p className="mt-2.5 text-xs text-[#555047] dark:text-[#aaa] line-clamp-2 leading-relaxed">
+                      <p className="mt-2 text-xs text-[#555047] line-clamp-2 leading-relaxed">
                         {product.shortDescription ||
                           product.description ||
                           "Handcrafted luxury fine jewellery design hallmarked to perfection."}
                       </p>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="pt-2 border-t border-[#E8E2D8] dark:border-[#222] grid grid-cols-2 gap-2">
-                      {/* Request Item Button */}
-                      <button
-                        onClick={(e) => openRequestModal(product, e)}
-                        className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-bold bg-[#B81862]/10 hover:bg-[#B81862]/20 dark:bg-[#B81862]/10 dark:hover:bg-[#B81862]/20 text-[#B81862] dark:text-[#d43d8a] border border-[#B81862]/25 hover:border-[#B81862]/50 transition cursor-pointer"
-                      >
-                        <ShoppingBag className="w-3.5 h-3.5" />
-                        <span>Request</span>
-                      </button>
-
-                      {/* WhatsApp Enquiry */}
-                      <a
-                        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                          `Hello, I would like to enquire about: ${product.name} (SKU: ${product.sku || "N/A"}) priced at ${formatPrice(product.price)}.`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {/* Cart Interactive Controls */}
+                    <div className="pt-2 border-t border-[#F0D6E8] space-y-2">
+                      {/* Quantity Selector + Add to Cart Row */}
+                      <div
+                        className="flex items-center gap-2"
                         onClick={(e) => e.stopPropagation()}
-                        className="flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold bg-[#F5F1EB] hover:bg-[#25D366]/20 dark:bg-[#202020] text-[#332E29] hover:text-[#1b9e4b] dark:text-[#ccc] dark:hover:text-[#25D366] border border-[#D5CEC2] dark:border-[#2d2d2d] hover:border-[#25D366]/40 transition"
                       >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        <span>WhatsApp</span>
-                      </a>
+                        {/* Minus / Qty / Plus Controller */}
+                        <div className="flex items-center bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] p-1 shrink-0 shadow-xs">
+                          <button
+                            type="button"
+                            onClick={(e) => handleCardQtyChange(product._id, -1, e)}
+                            className="w-7 h-7 rounded-lg bg-white hover:bg-[#FDF0F6] text-[#B81862] flex items-center justify-center transition cursor-pointer font-bold border border-[#F0D6E8]"
+                            title="Decrease Quantity"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-7 text-center font-bold text-xs text-[#111111]">
+                            {cardSelectedQty}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCardQtyChange(product._id, 1, e)}
+                            className="w-7 h-7 rounded-lg bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white flex items-center justify-center hover:opacity-90 transition cursor-pointer font-bold"
+                            title="Increase Quantity"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        {/* Add to Cart Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleAddToCart(product, e)}
+                          className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
+                            wasJustAdded
+                              ? "bg-emerald-600 text-white shadow-md scale-98"
+                              : inCartQty > 0
+                              ? "bg-[#B81862] text-white hover:opacity-90"
+                              : "bg-[#B81862]/10 hover:bg-[#B81862]/20 text-[#B81862] border border-[#B81862]/30"
+                          }`}
+                        >
+                          {wasJustAdded ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Added!</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              <span>Add ({cardSelectedQty})</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Direct Request & WhatsApp Buttons */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Direct Single Request */}
+                        <button
+                          type="button"
+                          onClick={(e) => openRequestModal(product, e)}
+                          className="py-1.5 px-2 rounded-xl text-[11px] font-semibold bg-[#FFF8FB] text-[#332E29] hover:text-[#B81862] border border-[#F0D6E8] hover:border-[#B81862] transition cursor-pointer text-center"
+                        >
+                          Quick Request
+                        </button>
+
+                        {/* WhatsApp Direct Enquiry */}
+                        <a
+                          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                            `Hello Dwara Collections, I would like to enquire about: ${product.name} (SKU: ${product.sku || "N/A"}) priced at ${formatPrice(product.price)}.`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="py-1.5 px-2 rounded-xl text-[11px] font-semibold bg-[#F5F1EB] hover:bg-[#25D366]/20 text-[#332E29] hover:text-[#1b9e4b] border border-[#F0D6E8] hover:border-[#25D366]/40 transition flex items-center justify-center gap-1 text-center"
+                        >
+                          <MessageCircle className="w-3 h-3 text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -777,26 +1319,59 @@ export default function SimpleCataloguePage() {
         )}
       </main>
 
+      {/* ── FLOATING BOTTOM CART ACTION BAR ────────────────────────── */}
+      {totalCartCount > 0 && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 w-full max-w-lg px-4 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="bg-[#141414]/95 text-white backdrop-blur-md border border-white/20 rounded-2xl p-3 sm:p-3.5 shadow-2xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#B81862] to-[#d43d8a] flex items-center justify-center text-white shrink-0 shadow-sm">
+                <ShoppingBag className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-white">
+                    {totalCartCount} {totalCartCount === 1 ? "Item" : "Items"} in Cart
+                  </span>
+                  <span className="text-[11px] text-[#FDF0F6] font-semibold bg-[#B81862] px-2 py-0.5 rounded-full">
+                    {formatPrice(totalCartPrice)}
+                  </span>
+                </div>
+                <span className="text-[11px] text-gray-300">Click to review and request</span>
+              </div>
+            </div>
+
+            <button
+              id="floating-view-cart-btn"
+              onClick={() => setShowCartModal(true)}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-xs shadow-md hover:opacity-95 transition cursor-pointer shrink-0 flex items-center gap-1.5"
+            >
+              <span>View Cart</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── PRODUCT DETAIL MODAL ──────────────────────────────────── */}
       {selectedProduct && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 dark:bg-black/85 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setSelectedProduct(null)}
         >
           <div
-            className="bg-white dark:bg-[#161616] border border-[#D5CEC2] dark:border-[#2e2e2e] rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[90vh] text-left"
+            className="bg-white border border-[#F0D6E8] rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[90vh] text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close */}
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-3.5 right-3.5 z-20 p-2 rounded-full bg-white/90 dark:bg-black/70 text-gray-800 dark:text-white hover:bg-white dark:hover:bg-black hover:text-[#B81862] dark:hover:text-[#d43d8a] border border-black/10 dark:border-white/10 transition shadow-md"
+              className="absolute top-3.5 right-3.5 z-20 p-2 rounded-full bg-white/90 text-gray-800 hover:bg-white hover:text-[#B81862] border border-black/10 transition shadow-md"
             >
               <X className="w-4 h-4" />
             </button>
 
             {/* Image */}
-            <div className="w-full md:w-1/2 aspect-square md:aspect-auto bg-[#F5F2EC] dark:bg-[#101010] relative shrink-0 border-b md:border-b-0 md:border-r border-[#E5DFD4] dark:border-[#262626]">
+            <div className="w-full md:w-1/2 aspect-square md:aspect-auto bg-[#FDF0F6] relative shrink-0 border-b md:border-b-0 md:border-r border-[#F0D6E8]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={getPrimaryImage(selectedProduct)}
@@ -805,7 +1380,7 @@ export default function SimpleCataloguePage() {
               />
               {selectedProduct.isFeatured && (
                 <div className="absolute top-3.5 left-3.5">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B81862] dark:bg-[#d43d8a] text-white dark:text-black shadow-md flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B81862] text-white shadow-md flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     Featured
                   </span>
@@ -818,84 +1393,78 @@ export default function SimpleCataloguePage() {
               <div className="space-y-3.5">
                 {/* Category & SKU */}
                 <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862] dark:text-[#d43d8a]">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862]">
                     {(typeof selectedProduct.categoryId === "object" && selectedProduct.categoryId !== null
                       ? (selectedProduct.categoryId as { name?: string })?.name
                       : null) ||
                       selectedProduct.category?.name ||
                       "Fine Jewellery"}
                   </span>
-                  <span className="font-mono text-[11px] text-[#665F55] dark:text-[#aaa] bg-[#FDE8F2] dark:bg-[#222] px-2 py-0.5 rounded">
+                  <span className="font-mono text-[11px] text-[#7A5E6A] bg-[#FFF8FB] px-2 py-0.5 rounded border border-[#F0D6E8]">
                     SKU: {selectedProduct.sku}
                   </span>
                 </div>
 
-                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#111111] dark:text-white leading-snug tracking-tight">
+                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#111111] leading-snug tracking-tight">
                   {selectedProduct.name}
                 </h2>
 
                 {/* Price */}
-                <div className="flex items-baseline gap-2.5 pt-1 border-b border-[#E8E2D8] dark:border-[#262626] pb-3">
-                  <span className="text-2xl sm:text-3xl font-bold text-[#B81862] dark:text-[#d43d8a]">
+                <div className="flex items-baseline gap-2.5 pt-1 border-b border-[#F0D6E8] pb-3">
+                  <span className="text-2xl sm:text-3xl font-bold text-[#B81862]">
                     {formatPrice(selectedProduct.discountPrice || selectedProduct.price)}
                   </span>
                   {selectedProduct.discountPrice && (
-                    <span className="text-xs text-[#777] dark:text-[#888] line-through font-medium">
+                    <span className="text-xs text-[#777] line-through font-medium">
                       {formatPrice(selectedProduct.price)}
                     </span>
                   )}
                 </div>
 
-                {/* Stock */}
-                <div className="p-3 bg-[#F8F5EE] dark:bg-[#1e1e1e] rounded-xl border border-[#E0D8CC] dark:border-[#2a2a2a] flex items-center justify-between text-xs">
-                  <span className="text-[#665F55] dark:text-[#aaa] flex items-center gap-1.5 font-medium">
-                    <Package className="w-4 h-4 text-[#B81862] dark:text-[#B81862]" />
-                    Available Inventory:
-                  </span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                    {selectedProduct.quantity ?? 10} units in stock
+                {/* Stock Info */}
+                <div className="p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs">
+                  <span className="text-[#7A5E6A] font-medium">Stock Status:</span>
+                  <span className="font-bold text-emerald-700">
+                    {selectedProduct.quantity ? `${selectedProduct.quantity} units available` : "In Stock"}
                   </span>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#443E36] dark:text-[#ccc] mb-1">
-                    Piece Description
-                  </h4>
-                  <p className="text-xs sm:text-sm text-[#332E29] dark:text-[#ddd] leading-relaxed">
-                    {selectedProduct.description ||
-                      selectedProduct.shortDescription ||
-                      "Handcrafted luxury jewellery with certified hallmarked gold and natural diamonds."}
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#7A5E6A] mb-1">About This Piece</h4>
+                  <p className="text-xs text-[#555047] leading-relaxed">
+                    {selectedProduct.description || selectedProduct.shortDescription || "No detailed description available."}
                   </p>
                 </div>
               </div>
 
-              {/* CTAs */}
-              <div className="pt-2 space-y-2">
-                {/* Request Item */}
-                <button
-                  onClick={(e) => {
-                    setSelectedProduct(null);
-                    openRequestModal(selectedProduct, e);
-                  }}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-black shadow-md hover:opacity-90 transition cursor-pointer"
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Request This Item</span>
-                </button>
+              {/* Action Buttons */}
+              <div className="pt-4 border-t border-[#F0D6E8] space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      handleAddToCart(selectedProduct, e);
+                      setShowCartModal(true);
+                      setSelectedProduct(null);
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-xs shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Add to Cart &amp; Request</span>
+                  </button>
 
-                {/* WhatsApp CTA */}
-                <a
-                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                    `Hello, I would like to purchase/enquire about: ${selectedProduct.name} (SKU: ${selectedProduct.sku || "N/A"}) priced at ${formatPrice(selectedProduct.discountPrice || selectedProduct.price)}.`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold bg-[#25D366]/15 hover:bg-[#25D366]/25 text-[#1b9e4b] dark:text-[#25D366] border border-[#25D366]/30 transition"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Enquire on WhatsApp</span>
-                </a>
+                  <a
+                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                      `Hello Dwara Collections, I am interested in: ${selectedProduct.name} (SKU: ${selectedProduct.sku || "N/A"}).`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition flex items-center justify-center shadow-md"
+                    title="Enquire on WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4 fill-white" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
@@ -903,15 +1472,15 @@ export default function SimpleCataloguePage() {
       )}
 
       {/* ── FOOTER ────────────────────────────────────────────────── */}
-      <footer className="border-t border-[#E8E2D8] dark:border-[#222] bg-[#FDE8F2] dark:bg-[#121212] py-6 px-4 text-center text-xs text-[#665F55] dark:text-[#888] transition-colors duration-300">
+      <footer className="border-t border-[#F0D6E8] bg-[#FDE8F2] py-6 px-4 text-center text-xs text-[#665F55]">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p>© {new Date().getFullYear()} Dwara Collections. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <Link
               href="/admin/login"
-              className="text-[#332E29] dark:text-[#aaa] hover:text-[#B81862] dark:hover:text-[#d43d8a] transition flex items-center gap-1 font-medium"
+              className="text-[#332E29] hover:text-[#B81862] transition flex items-center gap-1 font-medium"
             >
-              <Lock className="w-3 h-3 text-[#B81862] dark:text-[#B81862]" />
+              <Lock className="w-3 h-3 text-[#B81862]" />
               Admin Portal
             </Link>
           </div>

@@ -129,7 +129,7 @@ export default function AdminLayout({
               <Icon className="w-4 h-4 shrink-0" />
               {item.label}
               {showBadge && (
-                <span className="ml-auto flex items-center justify-center w-5 h-5 rounded-full bg-[#B81862] text-black text-[10px] font-bold">
+                <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#B81862] text-white text-[10px] font-bold">
                   {pendingRequests > 9 ? "9+" : pendingRequests}
                 </span>
               )}

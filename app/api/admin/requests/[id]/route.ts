@@ -4,6 +4,9 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ItemRequest } from "@/models/ItemRequest";
 import mongoose from "mongoose";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -28,9 +31,6 @@ export async function PATCH(
       await connectToDatabase();
 
       const query: Record<string, unknown> = { _id: id };
-      if (session.businessId && mongoose.Types.ObjectId.isValid(session.businessId)) {
-        query.businessId = new mongoose.Types.ObjectId(session.businessId);
-      }
 
       const updated = await ItemRequest.findOneAndUpdate(
         query,
@@ -74,9 +74,6 @@ export async function DELETE(
       await connectToDatabase();
 
       const query: Record<string, unknown> = { _id: id };
-      if (session.businessId && mongoose.Types.ObjectId.isValid(session.businessId)) {
-        query.businessId = new mongoose.Types.ObjectId(session.businessId);
-      }
 
       await ItemRequest.findOneAndDelete(query);
       return NextResponse.json({ success: true });

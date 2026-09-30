@@ -10,6 +10,7 @@ export interface IItemRequestDocument extends mongoose.Document {
   quantity: number;
   description?: string;
   status: "pending" | "contacted" | "fulfilled" | "cancelled";
+  orderId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,14 +31,20 @@ const ItemRequestSchema = new Schema<IItemRequestDocument>(
       default: "pending",
       index: true,
     },
+    orderId: { type: String, default: null, index: true },
   },
   { timestamps: true }
 );
 
 ItemRequestSchema.index({ businessId: 1, createdAt: -1 });
 
+// Delete cached model to ensure schema changes (like new fields) always take effect.
+// Without this, Next.js hot-reload reuses the old compiled schema and silently drops new fields.
+if (mongoose.models.ItemRequest) {
+  delete (mongoose.models as Record<string, unknown>).ItemRequest;
+}
+
 export const ItemRequest: Model<IItemRequestDocument> =
-  mongoose.models.ItemRequest ||
   mongoose.model<IItemRequestDocument>("ItemRequest", ItemRequestSchema);
 
 export default ItemRequest;
