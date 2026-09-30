@@ -504,13 +504,13 @@ export default function AdminRequestsPage() {
                   </div>
 
                   {/* Right: Actions */}
-                  <div className="flex sm:flex-col gap-2 flex-wrap px-5 pb-5 sm:px-4 sm:py-6 sm:border-l border-t sm:border-t-0 border-[var(--border)]/60 sm:min-w-[170px]">
-                    <a href={`https://wa.me/${group.visitorPhone.replace(/\D/g, "")}?text=${encodeURIComponent(buildWhatsAppText(group))}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-[#25D366]/10 text-[#1a9648] border border-[#25D366]/30 hover:bg-[#25D366]/20 transition">
+                  <div className="flex flex-col sm:flex-col gap-2 p-4 sm:p-6 sm:border-l border-t sm:border-t-0 border-[var(--border)]/60 sm:min-w-[175px] justify-center bg-[var(--surface-2)]/20 sm:bg-transparent">
+                    <a href={`https://wa.me/${group.visitorPhone.replace(/\D/g, "")}?text=${encodeURIComponent(buildWhatsAppText(group))}`} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-[#25D366]/10 text-[#1a9648] border border-[#25D366]/30 hover:bg-[#25D366]/20 transition">
                       <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                     </a>
 
-                    <div className="relative flex-1 sm:flex-none">
-                      <select value={group.status} onChange={(e) => updateGroupStatus(group, e.target.value)} disabled={isUpdating} className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl text-xs font-semibold bg-[var(--surface-2)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none focus:border-[#B81862] transition cursor-pointer disabled:opacity-60">
+                    <div className="relative w-full">
+                      <select value={group.status} onChange={(e) => updateGroupStatus(group, e.target.value)} disabled={isUpdating} className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl text-xs font-semibold bg-[var(--surface-2)] border border-[var(--border)] text-[var(--foreground)] focus:outline-none focus:border-[#B81862] transition cursor-pointer disabled:opacity-60">
                         <option value="pending">Mark Pending</option>
                         <option value="contacted">Mark Contacted</option>
                         <option value="fulfilled">Mark Fulfilled</option>
@@ -523,7 +523,7 @@ export default function AdminRequestsPage() {
                     <button
                       onClick={() => setPendingDeleteGroup(group)}
                       disabled={isDeleting}
-                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition disabled:opacity-50 cursor-pointer"
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-red-500 border border-red-200 hover:bg-red-50 transition disabled:opacity-50 cursor-pointer"
                     >
                       {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       Delete
