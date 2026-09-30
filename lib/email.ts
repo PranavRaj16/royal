@@ -18,12 +18,13 @@ export interface AdminOrderNotificationPayload {
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "Eshmagold@gmail.com";
 const ADMIN_PHONE = process.env.ADMIN_PHONE || "7981935590";
+const SENDER_EMAIL = process.env.EMAIL_USER || process.env.GMAIL_USER || "dwarajewels123@gmail.com";
 
 /**
  * Creates Nodemailer transporter using Gmail SMTP or custom SMTP
  */
 function getTransporter() {
-  const user = process.env.EMAIL_USER || process.env.GMAIL_USER || "Eshmagold@gmail.com";
+  const user = SENDER_EMAIL;
   const pass = process.env.EMAIL_PASS || process.env.GMAIL_APP_PASSWORD;
 
   if (!pass) {
@@ -204,7 +205,7 @@ export async function sendAdminOrderNotification(payload: AdminOrderNotification
     `;
 
     const mailOptions = {
-      from: `"Dwara Collections Alert" <${process.env.EMAIL_USER || process.env.GMAIL_USER || "Eshmagold@gmail.com"}>`,
+      from: `"Dwara Collections" <${SENDER_EMAIL}>`,
       to: ADMIN_EMAIL,
       subject: `👑 New Order Request #${orderId} - from ${visitorName} (${items.length} item${items.length > 1 ? "s" : ""})`,
       html: htmlContent,

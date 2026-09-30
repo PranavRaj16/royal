@@ -113,6 +113,7 @@ export default function SimpleCataloguePage() {
   const [requestSuccess, setRequestSuccess] = useState(false);
   const [requestError, setRequestError] = useState("");
   const [lastSubmittedOrderId, setLastSubmittedOrderId] = useState<string>("");
+  const [showMobileFilterDrawer, setShowMobileFilterDrawer] = useState(false);
 
   // Load visitor & cart from localStorage
   useEffect(() => {
@@ -149,13 +150,25 @@ export default function SimpleCataloguePage() {
     } catch {}
   };
 
+  // Re-fetch products from server to keep stock in sync
+  const refreshProducts = useCallback(async () => {
+    try {
+      const prodRes = await fetch(`/api/public/products?sort=newest&t=${Date.now()}`).then((r) => r.json());
+      if (prodRes.success && Array.isArray(prodRes.products)) {
+        setProducts(prodRes.products);
+      }
+    } catch (err) {
+      console.warn("Failed to refresh products:", err);
+    }
+  }, []);
+
   // Fetch products and categories
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
         const [prodRes, catRes] = await Promise.all([
-          fetch("/api/public/products?sort=newest").then((r) => r.json()),
+          fetch(`/api/public/products?sort=newest&t=${Date.now()}`).then((r) => r.json()),
           fetch("/api/public/categories").then((r) => r.json()),
         ]);
 
@@ -408,11 +421,12 @@ export default function SimpleCataloguePage() {
     return cardQuantities[productId] ?? 1;
   };
 
-  const handleCardQtyChange = (productId: string, delta: number, e: React.MouseEvent) => {
+  const handleCardQtyChange = (product: IProduct, delta: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const current = getCardSelectedQty(productId);
-    const next = Math.max(1, current + delta);
-    setCardQuantities((prev) => ({ ...prev, [productId]: next }));
+    const current = getCardSelectedQty(product._id);
+    const maxLimit = product.showQuantity === false ? 9999 : (product.quantity ?? 10);
+    const next = Math.max(1, Math.min(maxLimit, current + delta));
+    setCardQuantities((prev) => ({ ...prev, [product._id]: next }));
   };
 
   // Add to cart from product card
@@ -436,7 +450,8 @@ export default function SimpleCataloguePage() {
   const handleUpdateCartQuantity = (productId: string, delta: number) => {
     const existing = cart[productId];
     if (!existing) return;
-    const newQty = existing.quantity + delta;
+    const maxLimit = existing.product.showQuantity === false ? 9999 : (existing.product.quantity ?? 10);
+    const newQty = Math.min(maxLimit, existing.quantity + delta);
     if (newQty <= 0) {
       const newCart = { ...cart };
       delete newCart[productId];
@@ -529,6 +544,27 @@ export default function SimpleCataloguePage() {
       }
       setLastSubmittedOrderId(data.orderId || data.request?.orderId || "");
       setRequestSuccess(true);
+
+      // Immediately decrement stock in client state without requiring page reload
+      const orderedProdId = requestProduct._id;
+      const orderedCount = requestQty;
+      setProducts((prev) =>
+        prev.map((p) => {
+          if (p._id === orderedProdId) {
+            const newQty = Math.max(0, (p.quantity ?? 10) - orderedCount);
+            return {
+              ...p,
+              quantity: newQty,
+              stockStatus: newQty <= 0 ? "out_of_stock" : p.stockStatus,
+            };
+          }
+          return p;
+        })
+      );
+
+      // Re-fetch products from server to ensure perfect sync
+      refreshProducts();
+
       // Ensure customer session cookie is refreshed
       try {
         fetch("/api/customer/login", {
@@ -582,6 +618,28 @@ export default function SimpleCataloguePage() {
       setLastSubmittedOrderId(data.orderId || data.requests?.[0]?.orderId || "");
       setCartSuccessItems([...cartItemList]);
       setCartSuccess(true);
+
+      // Immediately decrement stock for all cart items in client state
+      const qtyMap: Record<string, number> = {};
+      cartItemList.forEach((it) => {
+        qtyMap[it.product._id] = (qtyMap[it.product._id] || 0) + it.quantity;
+      });
+      setProducts((prev) =>
+        prev.map((p) => {
+          const ordered = qtyMap[p._id];
+          if (!ordered) return p;
+          const newQty = Math.max(0, (p.quantity ?? 10) - ordered);
+          return {
+            ...p,
+            quantity: newQty,
+            stockStatus: newQty <= 0 ? "out_of_stock" : p.stockStatus,
+          };
+        })
+      );
+
+      // Re-fetch products from server to ensure perfect sync
+      refreshProducts();
+
       handleClearCart();
       setCartNote("");
       // Ensure customer session cookie is refreshed
@@ -1130,9 +1188,20 @@ export default function SimpleCataloguePage() {
 
                 {/* Quantity */}
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36] mb-2">
-                    Quantity *
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-[#443E36]">
+                      Quantity *
+                    </label>
+                    {requestProduct.showQuantity === false ? (
+                      <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                        Any quantity available
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-[#7A5E6A] font-medium">
+                        {requestProduct.quantity ?? 10} available
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
@@ -1144,7 +1213,10 @@ export default function SimpleCataloguePage() {
                     <span className="w-12 text-center font-bold text-lg text-[#111111]">{requestQty}</span>
                     <button
                       type="button"
-                      onClick={() => setRequestQty(requestQty + 1)}
+                      onClick={() => {
+                        const maxLimit = requestProduct.showQuantity === false ? 9999 : (requestProduct.quantity ?? 10);
+                        setRequestQty(Math.min(maxLimit, requestQty + 1));
+                      }}
                       className="w-9 h-9 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white flex items-center justify-center hover:opacity-90 transition cursor-pointer font-bold"
                     >
                       <Plus className="w-4 h-4" />
@@ -1517,146 +1589,257 @@ export default function SimpleCataloguePage() {
       </section>
 
       {/* ── PRODUCT GRID ──────────────────────────────────────────── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-3 sm:pt-4 pb-28">
-        {/* ── SEARCH & FILTERS TOOLBAR ─────────────────────────────────── */}
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl border border-[#F0D6E8] p-3 sm:p-4 mb-4 sm:mb-6 shadow-[0_4px_20px_rgba(184,24,98,0.04)] space-y-3">
-          {/* Top row: Search Bar + Filter Dropdowns */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 sm:gap-3">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-[#B81862] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                id="homepage-search-input"
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search jewellery, SKU, gemstones, diamonds, gold..."
-                className="w-full pl-9 pr-9 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs sm:text-sm text-[#111111] placeholder:text-[#998E84] focus:outline-none focus:border-[#B81862] focus:ring-1 focus:ring-[#B81862] transition"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#888] hover:text-[#111] hover:bg-[#F0D6E8]/50 transition cursor-pointer"
-                  title="Clear search"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Filter Dropdowns */}
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
-              {/* Category Dropdown */}
-              <select
-                id="homepage-category-filter"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[130px]"
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 pt-2 sm:pt-4 pb-28">
+        {/* ── RESPONSIVE SEARCH & FILTERS TOOLBAR ──────────────────────── */}
+        <div className="mb-4 sm:mb-6 space-y-2.5">
+          {/* ── MOBILE FILTER STRIP (< md) ── */}
+          <div className="md:hidden bg-white/95 backdrop-blur-md rounded-2xl border border-[#F0D6E8] p-2.5 shadow-[0_2px_12px_rgba(184,24,98,0.04)] space-y-2">
+            {/* Action Strip: Filter Drawer Button + Scrollable Quick Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+              {/* Primary Filter & Sort Trigger */}
+              <button
+                type="button"
+                onClick={() => setShowMobileFilterDrawer(true)}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 ${
+                  activeFilterCount > 0
+                    ? "bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white shadow-sm"
+                    : "bg-[#FFF8FB] text-[#B81862] border border-[#B81862]/30 hover:bg-[#FFF0F7]"
+                }`}
               >
-                <option value="all">All Collections</option>
-                {dedupedCategories.map((c) => (
-                  <option key={c._id} value={c._id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>Filters & Sort</span>
+                {activeFilterCount > 0 && (
+                  <span className="ml-0.5 w-4 h-4 rounded-full bg-white text-[#B81862] text-[10px] font-extrabold flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
 
-              {/* Stock Status Dropdown */}
-              <select
-                id="homepage-stock-filter"
-                value={selectedStock}
-                onChange={(e) => setSelectedStock(e.target.value)}
-                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[115px]"
-              >
-                <option value="all">All Stock</option>
-                <option value="in_stock">In Stock</option>
-                <option value="made_to_order">Made to Order</option>
-              </select>
+              <div className="w-[1px] h-6 bg-[#F0D6E8] shrink-0" />
 
-              {/* Price Range Dropdown */}
-              <select
-                id="homepage-price-filter"
-                value={priceRange}
-                onChange={(e) => setPriceRange(e.target.value)}
-                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[130px]"
-              >
-                <option value="all">All Prices</option>
-                <option value="under_1l">Under ₹1,00,000</option>
-                <option value="1l_5l">₹1L – ₹5 Lakh</option>
-                <option value="above_5l">Above ₹5,00,000</option>
-              </select>
-
-              {/* Sort By Dropdown */}
-              <select
-                id="homepage-sort-select"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="w-full sm:w-auto px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[135px]"
-              >
-                <option value="featured">Featured First</option>
-                <option value="newest">Newest First</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-                <option value="qty-desc">Quantity: High to Low</option>
-                <option value="name-asc">Name: A to Z</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Quick Toggle Pills: Featured & Discounted Offers */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#F0D6E8]/60 text-xs">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold text-[#7A5E6A] uppercase tracking-wider hidden sm:inline mr-1">
-                Quick Filters:
-              </span>
+              {/* Quick Filter: Featured */}
               <button
                 type="button"
                 onClick={() => setOnlyFeatured(!onlyFeatured)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
                   onlyFeatured
                     ? "bg-[#B81862] text-white shadow-xs"
-                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
                 }`}
               >
-                <Star className={`w-3.5 h-3.5 ${onlyFeatured ? "fill-white text-white" : "text-[#B81862]"}`} />
-                <span>Featured Pieces</span>
+                <Star className={`w-3 h-3 ${onlyFeatured ? "fill-white text-white" : "text-[#B81862]"}`} />
+                <span>Featured</span>
               </button>
 
+              {/* Quick Filter: Offers */}
               <button
                 type="button"
                 onClick={() => setOnlyDiscounted(!onlyDiscounted)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
                   onlyDiscounted
                     ? "bg-[#B81862] text-white shadow-xs"
-                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
                 }`}
               >
-                <Percent className={`w-3.5 h-3.5 ${onlyDiscounted ? "text-white" : "text-[#B81862]"}`} />
-                <span>Special Offers</span>
+                <Percent className={`w-3 h-3 ${onlyDiscounted ? "text-white" : "text-[#B81862]"}`} />
+                <span>Offers</span>
               </button>
 
+              {/* Quick Filter: In Stock */}
+              <button
+                type="button"
+                onClick={() => setSelectedStock(selectedStock === "in_stock" ? "all" : "in_stock")}
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
+                  selectedStock === "in_stock"
+                    ? "bg-[#B81862] text-white shadow-xs"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
+                }`}
+              >
+                <Package className={`w-3 h-3 ${selectedStock === "in_stock" ? "text-white" : "text-[#B81862]"}`} />
+                <span>In Stock</span>
+              </button>
+
+              {/* Quick Filter: Under 1L */}
+              <button
+                type="button"
+                onClick={() => setPriceRange(priceRange === "under_1l" ? "all" : "under_1l")}
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
+                  priceRange === "under_1l"
+                    ? "bg-[#B81862] text-white shadow-xs"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
+                }`}
+              >
+                <span>&lt; ₹1 Lakh</span>
+              </button>
+
+              {/* Quick Reset Button if any filter is active */}
               {activeFilterCount > 0 && (
                 <button
                   type="button"
                   onClick={resetAllFilters}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-semibold text-xs text-[#B81862] hover:bg-[#FDE8F2] transition cursor-pointer"
+                  className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold text-[#B81862] bg-[#FDE8F2] hover:bg-[#fbd0e4] transition cursor-pointer"
                 >
                   <RotateCcw className="w-3 h-3" />
-                  <span>Reset All ({activeFilterCount})</span>
+                  <span>Reset</span>
                 </button>
               )}
             </div>
 
-            <div className="text-[11px] text-[#7A5E6A] font-medium">
-              Showing <strong className="text-[#111111] font-bold">{filteredProducts.length}</strong> of{" "}
-              <span>{products.length}</span> pieces
+            {/* Mobile Subline: Piece Count & Active Tags */}
+            <div className="flex items-center justify-between text-[11px] text-[#7A5E6A] pt-1 border-t border-[#F0D6E8]/50">
+              <span>
+                Showing <strong className="text-[#111111] font-bold">{filteredProducts.length}</strong> of{" "}
+                <span>{products.length}</span> pieces
+              </span>
+
+              {sortBy !== "featured" && (
+                <span className="text-[10px] text-[#B81862] font-semibold truncate max-w-[140px]">
+                  Sort: {sortBy === "newest" ? "Newest" : sortBy === "price-asc" ? "Price Low-High" : sortBy === "price-desc" ? "Price High-Low" : sortBy === "name-asc" ? "Name A-Z" : "Custom"}
+                </span>
+              )}
             </div>
           </div>
 
-          {/* Active Filter Badges */}
+          {/* ── DESKTOP FILTER TOOLBAR (>= md) ── */}
+          <div className="hidden md:block bg-white/80 backdrop-blur-md rounded-2xl border border-[#F0D6E8] p-4 shadow-[0_4px_20px_rgba(184,24,98,0.04)] space-y-3">
+            {/* Top row: Search Bar + Filter Dropdowns */}
+            <div className="flex flex-row items-center gap-3">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-[#B81862] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  id="homepage-search-input"
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search jewellery, SKU, gemstones, diamonds, gold..."
+                  className="w-full pl-9 pr-9 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs sm:text-sm text-[#111111] placeholder:text-[#998E84] focus:outline-none focus:border-[#B81862] focus:ring-1 focus:ring-[#B81862] transition"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-[#888] hover:text-[#111] hover:bg-[#F0D6E8]/50 transition cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Dropdowns */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Category Dropdown */}
+                <select
+                  id="homepage-category-filter"
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[130px]"
+                >
+                  <option value="all">All Collections</option>
+                  {dedupedCategories.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Stock Status Dropdown */}
+                <select
+                  id="homepage-stock-filter"
+                  value={selectedStock}
+                  onChange={(e) => setSelectedStock(e.target.value)}
+                  className="px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[115px]"
+                >
+                  <option value="all">All Stock</option>
+                  <option value="in_stock">In Stock</option>
+                  <option value="made_to_order">Made to Order</option>
+                </select>
+
+                {/* Price Range Dropdown */}
+                <select
+                  id="homepage-price-filter"
+                  value={priceRange}
+                  onChange={(e) => setPriceRange(e.target.value)}
+                  className="px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[130px]"
+                >
+                  <option value="all">All Prices</option>
+                  <option value="under_1l">Under ₹1,00,000</option>
+                  <option value="1l_5l">₹1L – ₹5 Lakh</option>
+                  <option value="above_5l">Above ₹5,00,000</option>
+                </select>
+
+                {/* Sort By Dropdown */}
+                <select
+                  id="homepage-sort-select"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[135px]"
+                >
+                  <option value="featured">Featured First</option>
+                  <option value="newest">Newest First</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="qty-desc">Quantity: High to Low</option>
+                  <option value="name-asc">Name: A to Z</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Quick Toggle Pills: Featured & Discounted Offers */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#F0D6E8]/60 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-[#7A5E6A] uppercase tracking-wider hidden sm:inline mr-1">
+                  Quick Filters:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOnlyFeatured(!onlyFeatured)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+                    onlyFeatured
+                      ? "bg-[#B81862] text-white shadow-xs"
+                      : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                  }`}
+                >
+                  <Star className={`w-3.5 h-3.5 ${onlyFeatured ? "fill-white text-white" : "text-[#B81862]"}`} />
+                  <span>Featured Pieces</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOnlyDiscounted(!onlyDiscounted)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
+                    onlyDiscounted
+                      ? "bg-[#B81862] text-white shadow-xs"
+                      : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                  }`}
+                >
+                  <Percent className={`w-3.5 h-3.5 ${onlyDiscounted ? "text-white" : "text-[#B81862]"}`} />
+                  <span>Special Offers</span>
+                </button>
+
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={resetAllFilters}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-semibold text-xs text-[#B81862] hover:bg-[#FDE8F2] transition cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Reset All ({activeFilterCount})</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="text-[11px] text-[#7A5E6A] font-medium">
+                Showing <strong className="text-[#111111] font-bold">{filteredProducts.length}</strong> of{" "}
+                <span>{products.length}</span> pieces
+              </div>
+            </div>
+          </div>
+
+          {/* Active Filter Badges (Shared) */}
           {activeFilterCount > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               {search && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
                   Search: &ldquo;{search}&rdquo;
@@ -1713,6 +1896,234 @@ export default function SimpleCataloguePage() {
             </div>
           )}
         </div>
+
+        {/* ── MOBILE FILTER & SORT BOTTOM DRAWER MODAL ────────────────── */}
+        {showMobileFilterDrawer && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setShowMobileFilterDrawer(false)}
+          >
+            <div
+              className="bg-white border-t sm:border border-[#F0D6E8] rounded-t-3xl sm:rounded-3xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl animate-in slide-in-from-bottom-8 duration-300 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Top Drag Handle & Header */}
+              <div className="p-4 border-b border-[#F0D6E8] bg-[#FFF8FB] shrink-0">
+                <div className="w-10 h-1 bg-[#E8D0E0] rounded-full mx-auto mb-3 sm:hidden" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#B81862] to-[#d43d8a] flex items-center justify-center text-white shadow-xs">
+                      <SlidersHorizontal className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-base font-bold text-[#111111]">Filter & Sort</h3>
+                      <p className="text-[11px] text-[#7A5E6A]">Refine jewellery catalogue</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {activeFilterCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={resetAllFilters}
+                        className="text-xs font-bold text-[#B81862] hover:underline px-2 py-1 cursor-pointer"
+                      >
+                        Reset All
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowMobileFilterDrawer(false)}
+                      className="p-1.5 rounded-full text-[#666] hover:bg-black/5 transition cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Body - Scrollable Sections */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                {/* 1. Sort By */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#443E36] mb-2.5">
+                    Sort Order
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: "featured", label: "Featured First" },
+                      { id: "newest", label: "Newest Arrivals" },
+                      { id: "price-asc", label: "Price: Low to High" },
+                      { id: "price-desc", label: "Price: High to Low" },
+                      { id: "qty-desc", label: "Quantity: High to Low" },
+                      { id: "name-asc", label: "Name: A to Z" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setSortBy(opt.id)}
+                        className={`p-2.5 rounded-xl text-xs font-medium text-left border transition flex items-center justify-between cursor-pointer ${
+                          sortBy === opt.id
+                            ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
+                            : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {sortBy === opt.id && <Check className="w-3.5 h-3.5 text-[#B81862]" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Collections / Categories */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#443E36] mb-2.5">
+                    Jewellery Collection
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory("all")}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer ${
+                        selectedCategory === "all"
+                          ? "bg-[#B81862] text-white border-[#B81862] font-bold shadow-xs"
+                          : "bg-[#FFF8FB] text-[#332E29] border-[#F0D6E8]"
+                      }`}
+                    >
+                      All Collections ({products.length})
+                    </button>
+                    {dedupedCategories.map((c) => {
+                      const isSelected = selectedCategory === c._id;
+                      return (
+                        <button
+                          key={c._id}
+                          type="button"
+                          onClick={() => setSelectedCategory(c._id)}
+                          className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer ${
+                            isSelected
+                              ? "bg-[#B81862] text-white border-[#B81862] font-bold shadow-xs"
+                              : "bg-[#FFF8FB] text-[#332E29] border-[#F0D6E8]"
+                          }`}
+                        >
+                          {c.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Price Range */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#443E36] mb-2.5">
+                    Price Range
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: "all", label: "All Prices" },
+                      { id: "under_1l", label: "Under ₹1,00,000" },
+                      { id: "1l_5l", label: "₹1L – ₹5 Lakh" },
+                      { id: "above_5l", label: "Above ₹5,00,000" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setPriceRange(opt.id)}
+                        className={`p-2.5 rounded-xl text-xs font-medium text-left border transition flex items-center justify-between cursor-pointer ${
+                          priceRange === opt.id
+                            ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
+                            : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {priceRange === opt.id && <Check className="w-3.5 h-3.5 text-[#B81862]" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Stock Status */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#443E36] mb-2.5">
+                    Availability
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "all", label: "All Items" },
+                      { id: "in_stock", label: "In Stock" },
+                      { id: "made_to_order", label: "Made to Order" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setSelectedStock(opt.id)}
+                        className={`p-2 rounded-xl text-xs font-medium text-center border transition cursor-pointer ${
+                          selectedStock === opt.id
+                            ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
+                            : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 5. Special Highlights */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#443E36] mb-2.5">
+                    Highlights
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOnlyFeatured(!onlyFeatured)}
+                      className={`p-2.5 rounded-xl text-xs font-semibold border transition flex items-center justify-between cursor-pointer ${
+                        onlyFeatured
+                          ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862]"
+                          : "bg-[#FFF8FB] border-[#F0D6E8] text-[#555047]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Star className={`w-3.5 h-3.5 ${onlyFeatured ? "fill-[#B81862] text-[#B81862]" : "text-gray-400"}`} />
+                        Featured Pieces
+                      </span>
+                      {onlyFeatured && <Check className="w-3.5 h-3.5 text-[#B81862]" />}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setOnlyDiscounted(!onlyDiscounted)}
+                      className={`p-2.5 rounded-xl text-xs font-semibold border transition flex items-center justify-between cursor-pointer ${
+                        onlyDiscounted
+                          ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862]"
+                          : "bg-[#FFF8FB] border-[#F0D6E8] text-[#555047]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Percent className={`w-3.5 h-3.5 ${onlyDiscounted ? "text-[#B81862]" : "text-gray-400"}`} />
+                        Special Offers
+                      </span>
+                      {onlyDiscounted && <Check className="w-3.5 h-3.5 text-[#B81862]" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Sticky Footer */}
+              <div className="p-4 border-t border-[#F0D6E8] bg-[#FFF8FB] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowMobileFilterDrawer(false)}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-sm shadow-md hover:opacity-95 transition cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Show {filteredProducts.length} Jewellery Pieces</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {loading ? (
           <div className="grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -1843,7 +2254,11 @@ export default function SimpleCataloguePage() {
                       {/* Quantity & SKU */}
                       <div className="mt-1 flex items-center justify-between text-[11px] sm:text-xs text-[#7A5E6A]">
                         <span className="font-mono text-[10px] sm:text-[11px] truncate max-w-[130px]">SKU: {product.sku || "N/A"}</span>
-                        <span className="shrink-0">{stockQty} in stock</span>
+                        {product.showQuantity !== false ? (
+                          <span className="shrink-0">{stockQty} in stock</span>
+                        ) : (
+                          <span className="shrink-0 text-emerald-700 font-semibold">Available</span>
+                        )}
                       </div>
 
                       {/* Description */}
@@ -1865,7 +2280,7 @@ export default function SimpleCataloguePage() {
                         <div className="flex items-center bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] p-0.5 sm:p-1 shrink-0 shadow-xs">
                           <button
                             type="button"
-                            onClick={(e) => handleCardQtyChange(product._id, -1, e)}
+                            onClick={(e) => handleCardQtyChange(product, -1, e)}
                             className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-white hover:bg-[#FDF0F6] text-[#B81862] flex items-center justify-center transition cursor-pointer font-bold border border-[#F0D6E8]"
                             title="Decrease Quantity"
                           >
@@ -1876,7 +2291,7 @@ export default function SimpleCataloguePage() {
                           </span>
                           <button
                             type="button"
-                            onClick={(e) => handleCardQtyChange(product._id, 1, e)}
+                            onClick={(e) => handleCardQtyChange(product, 1, e)}
                             className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white flex items-center justify-center hover:opacity-90 transition cursor-pointer font-bold"
                             title="Increase Quantity"
                           >
@@ -2146,7 +2561,11 @@ export default function SimpleCataloguePage() {
                   <div className="p-2.5 sm:p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs">
                     <span className="text-[#7A5E6A] font-medium">Stock Status:</span>
                     <span className="font-bold text-emerald-700">
-                      {selectedProduct.quantity ? `${selectedProduct.quantity} units available` : "In Stock"}
+                      {selectedProduct.showQuantity === false
+                        ? "In Stock"
+                        : selectedProduct.quantity
+                        ? `${selectedProduct.quantity} units available`
+                        : "In Stock"}
                     </span>
                   </div>
 

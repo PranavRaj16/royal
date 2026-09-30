@@ -480,17 +480,30 @@ export default function SettingsPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase">
+                <Send className="w-3.5 h-3.5 text-[#B81862]" />
+                Sender Email (From)
+              </div>
+              <div className="text-sm font-bold font-mono text-[#141414] truncate">
+                dwarajewels123@gmail.com
+              </div>
+              <div className="text-[11px] text-gray-500">
+                Dispatches automated order receipts & requests.
+              </div>
+            </div>
+
             <div className="p-4 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase">
                 <Mail className="w-3.5 h-3.5 text-[#B81862]" />
-                Admin Notification Email
+                Admin Recipient (To)
               </div>
-              <div className="text-sm font-bold font-mono text-[#141414]">
+              <div className="text-sm font-bold font-mono text-[#141414] truncate">
                 Eshmagold@gmail.com
               </div>
               <div className="text-[11px] text-gray-500">
-                Receives full order details, customer contact & requested items.
+                Receives full order details, items & customer contact.
               </div>
             </div>
 
@@ -503,14 +516,14 @@ export default function SettingsPage() {
                 +91 7981935590
               </div>
               <div className="text-[11px] text-gray-500">
-                Included in order receipts & customer communication channels.
+                Included in order alerts & customer concierge.
               </div>
             </div>
           </div>
 
           <div className="pt-3 border-t border-[#F0EBE3] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="text-xs text-gray-500 max-w-md">
-              Want to test delivery? Click below to send a sample luxury order notification to <strong className="text-gray-800">Eshmagold@gmail.com</strong>.
+              Want to test delivery? Click below to send a sample luxury order notification from <strong className="text-gray-800 font-mono">dwarajewels123@gmail.com</strong> to <strong className="text-gray-800 font-mono">Eshmagold@gmail.com</strong>.
             </div>
             <button
               type="button"

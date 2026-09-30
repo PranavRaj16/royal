@@ -3,6 +3,9 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { Product } from "@/models";
 import mongoose from "mongoose";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // Public catalogue API - no auth required
 // Returns all published products for the catalogue page
 export async function GET(request: NextRequest) {
@@ -56,7 +59,14 @@ export async function GET(request: NextRequest) {
       .sort(sortObj)
       .lean();
 
-    return NextResponse.json({ success: true, products });
+    return NextResponse.json(
+      { success: true, products },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   } catch (error) {
     console.error("GET /api/public/products DB error (serving fallback catalogue):", error);
     
@@ -95,6 +105,13 @@ export async function GET(request: NextRequest) {
       filtered.sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    return NextResponse.json({ success: true, products: filtered, isFallback: true });
+    return NextResponse.json(
+      { success: true, products: filtered, isFallback: true },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
   }
 }

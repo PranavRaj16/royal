@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
-import { ItemRequest } from "@/models/ItemRequest";
-import { Business } from "@/models";
+import { Business, Product, ItemRequest } from "@/models";
 import mongoose from "mongoose";
 import crypto from "crypto";
 import { sendAdminOrderNotification } from "@/lib/email";
@@ -97,6 +96,25 @@ export async function POST(request: NextRequest) {
 
       const createdList = await ItemRequest.insertMany(itemsToCreate);
 
+      // Decrement product quantities in MongoDB
+      for (const it of itemsToCreate) {
+        if (it.productId) {
+          try {
+            const p = await Product.findById(it.productId);
+            if (p) {
+              const newQty = Math.max(0, (p.quantity ?? 10) - it.quantity);
+              p.quantity = newQty;
+              if (newQty <= 0) {
+                p.stockStatus = "out_of_stock";
+              }
+              await p.save();
+            }
+          } catch (pErr) {
+            console.warn("[public/requests] Could not decrement product quantity:", pErr);
+          }
+        }
+      }
+
       // Trigger admin email notification asynchronously
       sendAdminOrderNotification({
         orderId,
@@ -138,6 +156,23 @@ export async function POST(request: NextRequest) {
       orderId,
     });
 
+    // Decrement product quantity in MongoDB
+    if (validProductId) {
+      try {
+        const p = await Product.findById(validProductId);
+        if (p) {
+          const newQty = Math.max(0, (p.quantity ?? 10) - cleanQuantity);
+          p.quantity = newQty;
+          if (newQty <= 0) {
+            p.stockStatus = "out_of_stock";
+          }
+          await p.save();
+        }
+      } catch (pErr) {
+        console.warn("[public/requests] Could not decrement product quantity:", pErr);
+      }
+    }
+
     // Trigger admin email notification asynchronously
     sendAdminOrderNotification({
       orderId,
@@ -158,22 +193,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, request: itemRequest, orderId }, { status: 201 });
   } catch (dbErr) {
     console.warn("[public/requests POST] MongoDB write error, saving to demo fallback:", dbErr);
-    const { createDemoRequest } = await import("@/lib/demoData");
+    const { createDemoRequest, decrementDemoProductQuantity } = await import("@/lib/demoData");
 
     if (isBatch) {
-      const createdFallback = (items as Array<Record<string, unknown>>).map((it) =>
-        createDemoRequest({
-          productId: it.productId ? String(it.productId) : undefined,
+      const createdFallback = (items as Array<Record<string, unknown>>).map((it) => {
+        const pIdStr = it.productId ? String(it.productId) : undefined;
+        const qty = Math.max(1, Number(it.quantity) || 1);
+        if (pIdStr) {
+          decrementDemoProductQuantity(pIdStr, qty);
+        }
+        return createDemoRequest({
+          productId: pIdStr,
           productName: String(it.productName || "Jewellery Item").trim(),
           productSku: it.productSku ? String(it.productSku).trim() : "",
           visitorName: cleanVisitorName,
           visitorPhone: cleanVisitorPhone,
-          quantity: Math.max(1, Number(it.quantity) || 1),
+          quantity: qty,
           description: cleanDescription,
           status: "pending",
           orderId,
-        })
-      );
+        });
+      });
 
       // Trigger admin email notification asynchronously
       sendAdminOrderNotification({
@@ -193,13 +233,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, count: createdFallback.length, orderId, requests: createdFallback, isFallback: true }, { status: 201 });
     }
 
+    const cleanSingleQty = Math.max(1, Number(quantity) || 1);
+    if (productId) {
+      decrementDemoProductQuantity(String(productId), cleanSingleQty);
+    }
+
     const demoReq = createDemoRequest({
       productId: productId ? String(productId) : undefined,
       productName: String(productName).trim(),
       productSku: productSku ? String(productSku).trim() : "",
       visitorName: cleanVisitorName,
       visitorPhone: cleanVisitorPhone,
-      quantity: Math.max(1, Number(quantity) || 1),
+      quantity: cleanSingleQty,
       description: cleanDescription,
       status: "pending",
       orderId,

@@ -730,6 +730,22 @@ export function deleteDemoRequest(id: string): boolean {
   return true;
 }
 
+export function decrementDemoProductQuantity(productId?: string, quantityToDecrement: number = 1): IDemoProduct | null {
+  if (!productId) return null;
+  ensureLoaded();
+  const index = DEMO_PRODUCTS.findIndex((p) => p._id === productId || p.slug === productId);
+  if (index === -1) return null;
+  const current = DEMO_PRODUCTS[index].quantity ?? 10;
+  const newQty = Math.max(0, current - quantityToDecrement);
+  DEMO_PRODUCTS[index] = {
+    ...DEMO_PRODUCTS[index],
+    quantity: newQty,
+    stockStatus: newQty <= 0 ? "out_of_stock" : DEMO_PRODUCTS[index].stockStatus,
+  };
+  savePersistedData();
+  return DEMO_PRODUCTS[index];
+}
+
 // Initial load if file exists
 ensureLoaded();
 
