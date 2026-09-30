@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -18,12 +18,63 @@ import {
   AlertCircle,
   CheckCircle2,
   AlertTriangle,
+  RefreshCw,
+  Tag,
 } from "lucide-react";
 import { IProduct, ICategory, IProductImage } from "@/types";
+
+const MAX_IMAGES = 3;
 
 interface ProductFormProps {
   initialProduct?: IProduct;
   isEditMode?: boolean;
+}
+
+// Helper to determine the category code letter(s)
+function getCategoryLetter(catName?: string): string {
+  if (!catName) return "P";
+  const clean = catName.trim();
+  const lower = clean.toLowerCase();
+  if (lower.startsWith("neck")) return "N";
+  if (lower.startsWith("ring")) return "R";
+  if (lower.startsWith("ear")) return "E";
+  if (lower.startsWith("bang") || lower.startsWith("brac")) return "B";
+  if (lower.startsWith("pend")) return "P";
+  if (lower.startsWith("mang")) return "M";
+  if (lower.startsWith("chain")) return "C";
+  if (lower.startsWith("coin")) return "CO";
+  if (lower.startsWith("solit")) return "S";
+  const match = clean.match(/[a-zA-Z]/);
+  return match ? match[0].toUpperCase() : "P";
+}
+
+// Helper to compute the next SKU in DW-(Category letter)-01 format
+function generateSkuForCategory(
+  targetCatId: string,
+  catList: ICategory[],
+  prodList: IProduct[]
+): string {
+  const cat = catList.find((c) => c._id === targetCatId || c.slug === targetCatId);
+  const letter = getCategoryLetter(cat?.name);
+  const prefix = `DW-${letter}-`;
+
+  let maxNum = 0;
+  prodList.forEach((p) => {
+    if (p.sku) {
+      const upper = p.sku.toUpperCase().trim();
+      if (upper.startsWith(prefix)) {
+        const suffix = upper.slice(prefix.length);
+        const num = parseInt(suffix, 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    }
+  });
+
+  const nextNum = maxNum + 1;
+  const formattedNum = String(nextNum).padStart(2, "0");
+  return `${prefix}${formattedNum}`;
 }
 
 export default function ProductForm({ initialProduct, isEditMode = false }: ProductFormProps) {
@@ -35,6 +86,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
   const [name, setName] = useState(initialProduct?.name || "");
   const [slug, setSlug] = useState(initialProduct?.slug || "");
   const [sku, setSku] = useState(initialProduct?.sku || "");
+  const [skuManuallyEdited, setSkuManuallyEdited] = useState(Boolean(initialProduct?.sku));
 
   const initialCatId =
     (typeof initialProduct?.categoryId === "object" && initialProduct?.categoryId !== null
@@ -54,8 +106,10 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
   );
   const [quantity, setQuantity] = useState<number | string>(initialProduct?.quantity ?? 10);
 
-  // Images
-  const [images, setImages] = useState<IProductImage[]>(initialProduct?.images || []);
+  // Images (Max 3)
+  const [images, setImages] = useState<IProductImage[]>(
+    (initialProduct?.images || []).slice(0, MAX_IMAGES)
+  );
   const [imageUrlInput, setImageUrlInput] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -63,8 +117,9 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
   const [isFeatured, setIsFeatured] = useState(initialProduct?.isFeatured || false);
   const [isPublished, setIsPublished] = useState(initialProduct?.isPublished ?? true);
 
-  // UI States
+  // Data collections
   const [categories, setCategories] = useState<ICategory[]>([]);
+  const [existingProducts, setExistingProducts] = useState<IProduct[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -73,39 +128,76 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  // Fetch Categories and Existing Products
   useEffect(() => {
+    let isMounted = true;
     setLoadingCategories(true);
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.categories && data.categories.length > 0) {
-          setCategories(data.categories);
-          if (!categoryId) {
-            const matched = queryCatId
-              ? data.categories.find((c: ICategory) => c._id === queryCatId || c.slug === queryCatId)
-              : null;
-            setCategoryId(matched ? matched._id : data.categories[0]._id);
-          }
+
+    Promise.all([
+      fetch("/api/categories").then((res) => res.json()),
+      fetch("/api/products").then((res) => res.json()).catch(() => ({ products: [] })),
+    ])
+      .then(([catData, prodData]) => {
+        if (!isMounted) return;
+        const loadedCats: ICategory[] = catData.categories || [];
+        const loadedProds: IProduct[] = prodData.products || [];
+        setCategories(loadedCats);
+        setExistingProducts(loadedProds);
+
+        // Find the exact matching category
+        const target = queryCatId || initialCatId || categoryId;
+        const matched = loadedCats.find(
+          (c) =>
+            (c._id && target && String(c._id) === String(target)) ||
+            (c.slug && target && c.slug.toLowerCase() === String(target).toLowerCase()) ||
+            (c.name && target && c.name.toLowerCase() === String(target).toLowerCase())
+        );
+
+        const activeCatId = matched ? matched._id : (loadedCats[0]?._id || "");
+        if (activeCatId) {
+          setCategoryId(activeCatId);
+        }
+
+        // If creating a new product and SKU is not set or not manually edited, generate DW-(Category Letter)-01
+        if (!isEditMode && (!sku || !skuManuallyEdited) && activeCatId) {
+          const generated = generateSkuForCategory(activeCatId, loadedCats, loadedProds);
+          setSku(generated);
         }
       })
-      .catch((err) => console.error("Failed to load categories:", err))
-      .finally(() => setLoadingCategories(false));
-  }, [queryCatId, categoryId]);
+      .catch((err) => console.error("Failed to load categories/products:", err))
+      .finally(() => {
+        if (isMounted) setLoadingCategories(false);
+      });
 
-  useEffect(() => {
-    if (!sku) {
-      const initials = name
-        ? name
-            .split(" ")
-            .map((w: string) => w[0])
-            .filter(Boolean)
-            .join("")
-            .toUpperCase()
-            .slice(0, 3)
-        : "PRD";
-      setSku(`RJ-${initials || "PRD"}-${Date.now().toString().slice(-4)}`);
+    return () => {
+      isMounted = false;
+    };
+  }, [queryCatId, initialCatId, isEditMode]);
+
+  // Handle Category Change
+  const handleCategoryChange = (newCatId: string) => {
+    setCategoryId(newCatId);
+    clearFieldError("categoryId");
+    if (!isEditMode || !skuManuallyEdited) {
+      const generated = generateSkuForCategory(newCatId, categories, existingProducts);
+      setSku(generated);
     }
-  }, [name, sku]);
+  };
+
+  // Re-generate SKU manually
+  const handleRegenerateSku = () => {
+    if (!categoryId && categories.length > 0) {
+      const firstCat = categories[0]._id;
+      setCategoryId(firstCat);
+      const generated = generateSkuForCategory(firstCat, categories, existingProducts);
+      setSku(generated);
+    } else if (categoryId) {
+      const generated = generateSkuForCategory(categoryId, categories, existingProducts);
+      setSku(generated);
+    }
+    setSkuManuallyEdited(false);
+    clearFieldError("sku");
+  };
 
   const clearFieldError = (field: string) => {
     if (fieldErrors[field]) {
@@ -118,22 +210,47 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
     if (errorMessage) setErrorMessage(null);
   };
 
+  // Handle Image File Upload (Strict Max 3 Images)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
+    const remainingSlots = MAX_IMAGES - images.length;
+    if (remainingSlots <= 0) {
+      setErrorMessage(`Maximum limit of ${MAX_IMAGES} images reached for this product.`);
+      return;
+    }
+
+    if (files.length > remainingSlots) {
+      setErrorMessage(
+        `Only ${remainingSlots} more image${remainingSlots === 1 ? "" : "s"} could be added (max ${MAX_IMAGES} images limit).`
+      );
+    } else {
+      setErrorMessage(null);
+    }
+
+    const filesToUpload = Array.from(files).slice(0, remainingSlots);
     setUploadingImage(true);
-    setErrorMessage(null);
+
     try {
-      for (let i = 0; i < files.length; i++) {
+      for (let i = 0; i < filesToUpload.length; i++) {
         const formData = new FormData();
-        formData.append("file", files[i]);
+        formData.append("file", filesToUpload[i]);
         const res = await fetch("/api/upload", { method: "POST", body: formData });
         const data = await res.json();
         if (res.ok && data.url) {
-          setImages((prev) => [
-            ...prev,
-            { url: data.url, alt: files[i].name, isPrimary: prev.length === 0 && i === 0, order: prev.length + i },
-          ]);
+          setImages((prev) => {
+            if (prev.length >= MAX_IMAGES) return prev;
+            return [
+              ...prev,
+              {
+                url: data.url,
+                alt: filesToUpload[i].name,
+                isPrimary: prev.length === 0 && i === 0,
+                order: prev.length + i,
+              },
+            ];
+          });
         }
       }
     } catch (err) {
@@ -141,23 +258,40 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
       setErrorMessage("Failed to upload image. You can also paste an image URL directly.");
     } finally {
       setUploadingImage(false);
+      // Reset the file input value so user can upload again if slots open up
+      e.target.value = "";
     }
   };
 
+  // Add Image via URL (Strict Max 3 Images)
   const addImageUrl = () => {
     const trimmed = imageUrlInput.trim();
     if (!trimmed) return;
 
+    if (images.length >= MAX_IMAGES) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        imageUrl: `Maximum of ${MAX_IMAGES} images allowed per product.`,
+      }));
+      return;
+    }
+
     if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://") && !trimmed.startsWith("/")) {
-      setFieldErrors((prev) => ({ ...prev, imageUrl: "Please enter a valid URL starting with https://" }));
+      setFieldErrors((prev) => ({
+        ...prev,
+        imageUrl: "Please enter a valid URL starting with https://",
+      }));
       return;
     }
 
     clearFieldError("imageUrl");
-    setImages((prev) => [
-      ...prev,
-      { url: trimmed, alt: name || "Product image", isPrimary: prev.length === 0, order: prev.length },
-    ]);
+    setImages((prev) => {
+      if (prev.length >= MAX_IMAGES) return prev;
+      return [
+        ...prev,
+        { url: trimmed, alt: name || "Product image", isPrimary: prev.length === 0, order: prev.length },
+      ];
+    });
     setImageUrlInput("");
   };
 
@@ -175,7 +309,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
     setImages((prev) => prev.map((img, i) => ({ ...img, isPrimary: i === index })));
   };
 
-  // Client-side comprehensive validation
+  // Client-side validation
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
@@ -192,6 +326,10 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
 
     if (!cleanCategoryId) {
       errors.categoryId = "Please select a category.";
+    }
+
+    if (!sku.trim()) {
+      errors.sku = "Product ID / SKU is required (e.g. DW-N-01).";
     }
 
     if (price === "" || price === undefined || price === null) {
@@ -245,15 +383,19 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
 
     setSubmitting(true);
 
-    const cleanCategoryId =
-      typeof categoryId === "object" && categoryId !== null
-        ? (categoryId as { _id?: string })?._id || ""
-        : categoryId;
+    const selectedCatObj = categories.find(
+      (c) =>
+        (c._id && categoryId && String(c._id) === String(categoryId)) ||
+        (c.slug && categoryId && c.slug.toLowerCase() === String(categoryId).toLowerCase()) ||
+        (c.name && categoryId && c.name.toLowerCase() === String(categoryId).toLowerCase())
+    );
+
+    const cleanCategoryId = selectedCatObj ? selectedCatObj._id : (typeof categoryId === "object" && categoryId !== null ? (categoryId as { _id?: string })?._id || "" : categoryId);
 
     const payload = {
       name: name.trim(),
       slug: slug.trim() || name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-"),
-      sku: sku.trim() || `RJ-${Date.now().toString().slice(-6)}`,
+      sku: sku.trim().toUpperCase(),
       categoryId: cleanCategoryId,
       shortDescription: description.trim().slice(0, 150),
       description: description.trim(),
@@ -262,7 +404,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
       showPrice,
       quantity: Number(quantity) || 0,
       stockStatus,
-      images,
+      images: images.slice(0, MAX_IMAGES),
       specifications: initialProduct?.specifications || [],
       tags: initialProduct?.tags || [],
       isFeatured,
@@ -285,7 +427,11 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
       setSuccessMessage(isEditMode ? "Product updated successfully!" : "Product created successfully!");
 
       setTimeout(() => {
-        router.push("/admin/products");
+        if (cleanCategoryId) {
+          router.push(`/admin/products?category=${cleanCategoryId}`);
+        } else {
+          router.push("/admin/products");
+        }
         router.refresh();
       }, 600);
     } catch (err: unknown) {
@@ -323,7 +469,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               {isEditMode ? "Edit Product" : "Add Product"}
             </h1>
             <p className="text-xs text-[var(--muted)] mt-0.5">
-              Manage product images, details, category, quantity, and pricing
+              Manage product images (max 3), details, category, Product ID, and pricing
             </p>
           </div>
         </div>
@@ -360,7 +506,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
         <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300 flex items-start gap-3 shadow-sm animate-in fade-in duration-300">
           <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div className="flex-1 text-xs sm:text-sm">
-            <span className="font-semibold text-red-800 dark:text-white block mb-0.5">Validation Error</span>
+            <span className="font-semibold text-red-800 dark:text-white block mb-0.5">Notification</span>
             <p className="text-red-700 dark:text-red-300">{errorMessage}</p>
           </div>
           <button
@@ -383,109 +529,131 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
         </div>
       )}
 
-      {/* 1. Image Upload Section */}
+      {/* 1. Image Upload Section (Strict Limit: Max 3 Images) */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h2 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-[#B81862]" />
-              Product Images
+              <span>Product Images</span>
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#B81862]/10 text-[#B81862] border border-[#B81862]/20">
+                Max {MAX_IMAGES} Images
+              </span>
             </h2>
             <p className="text-xs text-[var(--muted)] mt-0.5">
-              Upload product photos or paste image links. Click ★ to select the primary cover image.
+              Upload up to 3 photos for this jewellery piece. Click ★ to select the cover photo.
             </p>
           </div>
-          <span className="text-xs text-[var(--muted)] font-mono">
-            {images.length} {images.length === 1 ? "image" : "images"}
+          <span className={`text-xs font-mono font-semibold px-2.5 py-1 rounded-lg ${
+            images.length >= MAX_IMAGES
+              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+              : "bg-[var(--surface-2)] text-[var(--muted)]"
+          }`}>
+            {images.length} / {MAX_IMAGES} uploaded {images.length >= MAX_IMAGES && "(Limit Reached)"}
           </span>
         </div>
 
         {images.length === 0 && (
           <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
             <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-            <span>No images uploaded yet. Add an image for the best showcase.</span>
+            <span>No images uploaded yet. You can upload up to 3 high-resolution images.</span>
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
           {images.map((img, idx) => (
             <div
               key={idx}
-              className={`relative aspect-square rounded-xl overflow-hidden border-2 transition group ${
-                img.isPrimary ? "border-[#d43d8a] ring-2 ring-[#d43d8a]/30" : "border-[var(--border)]"
+              className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition group ${
+                img.isPrimary ? "border-[#B81862] ring-2 ring-[#B81862]/30" : "border-[var(--border)]"
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.alt || "Product photo"} className="w-full h-full object-cover" />
+              <img src={img.url} alt={img.alt || `Photo ${idx + 1}`} className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => setPrimaryImage(idx)}
-                className={`absolute top-1.5 left-1.5 p-1 rounded-lg backdrop-blur-md transition ${
-                  img.isPrimary ? "bg-[#d43d8a] text-black font-bold" : "bg-black/60 text-white hover:bg-black"
+                className={`absolute top-2 left-2 p-1.5 rounded-lg backdrop-blur-md transition cursor-pointer ${
+                  img.isPrimary ? "bg-[#B81862] text-white font-bold shadow-md" : "bg-black/60 text-white hover:bg-black"
                 }`}
-                title={img.isPrimary ? "Primary cover photo" : "Set as primary cover"}
+                title={img.isPrimary ? "Primary cover photo" : "Set as cover photo"}
               >
-                <Star className={`w-3.5 h-3.5 ${img.isPrimary ? "fill-black" : ""}`} />
+                <Star className={`w-3.5 h-3.5 ${img.isPrimary ? "fill-white" : ""}`} />
               </button>
               <button
                 type="button"
                 onClick={() => removeImage(idx)}
-                className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-black/60 text-white hover:bg-red-600 backdrop-blur-md transition cursor-pointer"
+                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-white hover:bg-red-600 backdrop-blur-md transition cursor-pointer"
                 title="Delete image"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
+              <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-white text-[10px] font-mono">
+                {idx + 1} / {images.length}
+              </div>
               {img.isPrimary && (
-                <div className="absolute bottom-0 inset-x-0 bg-[#d43d8a] text-black text-[9px] font-bold uppercase tracking-wider text-center py-0.5">
+                <div className="absolute bottom-0 inset-x-0 bg-[#B81862] text-white text-[9px] font-bold uppercase tracking-wider text-center py-0.5">
                   Cover Photo
                 </div>
               )}
             </div>
           ))}
 
-          {/* Upload Button Box */}
-          <label className="aspect-square rounded-xl border-2 border-dashed border-[var(--border)] hover:border-[#B81862] bg-[var(--surface-2)] flex flex-col items-center justify-center cursor-pointer transition p-3 text-center group">
-            {uploadingImage ? (
-              <Loader2 className="w-6 h-6 text-[#B81862] animate-spin" />
-            ) : (
-              <>
-                <Upload className="w-6 h-6 text-[#B81862] mb-1 group-hover:scale-110 transition" />
-                <span className="text-[11px] font-semibold text-[var(--foreground)]">Upload Image</span>
-                <span className="text-[9px] text-[var(--muted)] mt-0.5">PNG, JPG, WebP</span>
-              </>
-            )}
-            <input
-              id="image-upload"
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleFileUpload}
-              disabled={uploadingImage}
-              className="hidden"
-            />
-          </label>
+          {/* Upload Button Box (Disabled when 3 images reached) */}
+          {images.length < MAX_IMAGES ? (
+            <label className="aspect-square rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-[#B81862] bg-[var(--surface-2)] flex flex-col items-center justify-center cursor-pointer transition p-3 text-center group hover:bg-[#B81862]/5">
+              {uploadingImage ? (
+                <Loader2 className="w-6 h-6 text-[#B81862] animate-spin" />
+              ) : (
+                <>
+                  <Upload className="w-6 h-6 text-[#B81862] mb-1 group-hover:scale-110 transition" />
+                  <span className="text-[11px] font-semibold text-[var(--foreground)]">Upload Image</span>
+                  <span className="text-[9px] text-[var(--muted)] mt-0.5">
+                    {MAX_IMAGES - images.length} slot{MAX_IMAGES - images.length === 1 ? "" : "s"} left
+                  </span>
+                </>
+              )}
+              <input
+                id="image-upload"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={uploadingImage || images.length >= MAX_IMAGES}
+                className="hidden"
+              />
+            </label>
+          ) : (
+            <div className="aspect-square rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--surface-2)]/60 flex flex-col items-center justify-center p-3 text-center opacity-60">
+              <CheckCircle2 className="w-6 h-6 text-emerald-500 mb-1" />
+              <span className="text-[11px] font-semibold text-[var(--foreground)]">Max 3 Images</span>
+              <span className="text-[9px] text-[var(--muted)] mt-0.5">Limit reached</span>
+            </div>
+          )}
         </div>
 
         {/* Paste URL */}
-        <div className="space-y-1">
+        <div className="space-y-1 pt-1">
           <div className="flex gap-2">
             <input
               id="image-url-input"
               type="text"
-              placeholder="Or paste direct image URL (https://...)"
+              placeholder={images.length >= MAX_IMAGES ? "Maximum 3 images limit reached" : "Or paste direct image URL (https://...)"}
               value={imageUrlInput}
+              disabled={images.length >= MAX_IMAGES}
               onChange={(e) => {
                 setImageUrlInput(e.target.value);
                 clearFieldError("imageUrl");
               }}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addImageUrl())}
-              className={`${getInputClass("imageUrl")} flex-1 text-xs`}
+              className={`${getInputClass("imageUrl")} flex-1 text-xs disabled:opacity-50`}
             />
             <button
               id="add-url-btn"
               type="button"
               onClick={addImageUrl}
-              className="px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold rounded-xl border border-[var(--border)] hover:border-[#B81862] transition whitespace-nowrap"
+              disabled={images.length >= MAX_IMAGES || !imageUrlInput.trim()}
+              className="px-4 py-2 bg-[var(--surface-2)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold rounded-xl border border-[var(--border)] hover:border-[#B81862] transition whitespace-nowrap disabled:opacity-50 cursor-pointer"
             >
               Add URL
             </button>
@@ -499,15 +667,16 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
         </div>
       </div>
 
-      {/* 2. Product Information (Name, Category, Description) */}
+      {/* 2. Product Information (Name, Category, Product ID / SKU, Description) */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
         <h2 className="text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
           <Info className="w-4 h-4 text-[#B81862]" />
           Product Information
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Product Name */}
+          <div className="sm:col-span-1">
             <label className={labelClass}>Product Name *</label>
             <input
               id="product-name"
@@ -520,7 +689,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
                   setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
                 }
               }}
-              placeholder="e.g. Royal Emerald Pendant Necklace"
+              placeholder="e.g. Serenade Marquise Floral Diamond Necklace"
               className={getInputClass("name")}
             />
             {fieldErrors.name && (
@@ -531,15 +700,13 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
             )}
           </div>
 
-          <div>
+          {/* Category */}
+          <div className="sm:col-span-1">
             <label className={labelClass}>Category *</label>
             <select
               id="product-category"
               value={categoryId}
-              onChange={(e) => {
-                setCategoryId(e.target.value);
-                clearFieldError("categoryId");
-              }}
+              onChange={(e) => handleCategoryChange(e.target.value)}
               className={getInputClass("categoryId")}
               disabled={loadingCategories}
             >
@@ -557,6 +724,55 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               </p>
             )}
           </div>
+
+          {/* Product ID / SKU in DW-(Category letter)-01 format */}
+          <div className="sm:col-span-1">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
+                Product ID (SKU) *
+              </label>
+              <button
+                type="button"
+                onClick={handleRegenerateSku}
+                className="text-[10px] text-[#B81862] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                title="Auto-generate ID based on selected category"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Auto-Generate</span>
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                id="product-sku"
+                type="text"
+                value={sku}
+                onChange={(e) => {
+                  setSku(e.target.value.toUpperCase());
+                  setSkuManuallyEdited(true);
+                  clearFieldError("sku");
+                }}
+                placeholder="e.g. DW-N-01"
+                className={`${getInputClass("sku")} font-mono font-semibold tracking-wide pr-8 uppercase`}
+              />
+              <button
+                type="button"
+                onClick={handleRegenerateSku}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[#B81862] transition cursor-pointer p-1"
+                title="Refresh ID"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-[10px] text-[var(--muted)] mt-1">
+              Format: <span className="font-mono font-semibold text-[#B81862]">DW-(Category Letter)-01</span> (Editable)
+            </p>
+            {fieldErrors.sku && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {fieldErrors.sku}
+              </p>
+            )}
+          </div>
         </div>
 
         <div>
@@ -566,7 +782,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the piece, craftsmanship, and design..."
+            placeholder="Describe the piece, craftsmanship, diamonds, and design..."
             className={`${getInputClass()} resize-none`}
           />
         </div>
@@ -672,7 +888,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
             type="checkbox"
             checked={showPrice}
             onChange={(e) => setShowPrice(e.target.checked)}
-            className="w-4 h-4 rounded accent-[#d43d8a]"
+            className="w-4 h-4 rounded accent-[#B81862]"
           />
           <span className="text-xs text-[var(--foreground)]">Show price publicly in store</span>
         </label>
@@ -696,7 +912,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               type="checkbox"
               checked={isPublished}
               onChange={(e) => setIsPublished(e.target.checked)}
-              className="w-4 h-4 rounded accent-[#d43d8a]"
+              className="w-4 h-4 rounded accent-[#B81862]"
             />
           </label>
 
@@ -710,7 +926,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               type="checkbox"
               checked={isFeatured}
               onChange={(e) => setIsFeatured(e.target.checked)}
-              className="w-4 h-4 rounded accent-[#d43d8a]"
+              className="w-4 h-4 rounded accent-[#B81862]"
             />
           </label>
         </div>

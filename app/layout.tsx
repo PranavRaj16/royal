@@ -21,6 +21,17 @@ export const metadata: Metadata = {
   title: "Dwara Collections | Luxury Jewellery Catalogue",
   description:
     "Explore our exquisite collection of handcrafted jewellery. Gold, diamonds, and gemstones crafted with timeless artistry.",
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png" },
+    ],
+    shortcut: ["/icon.png"],
+  },
   openGraph: {
     title: "Dwara Collections | Luxury Jewellery Catalogue",
     description:
@@ -40,6 +51,9 @@ export default function RootLayout({
       className={`${inter.variable} ${playfair.variable} h-full`}
     >
       <head>
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="shortcut icon" href="/icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

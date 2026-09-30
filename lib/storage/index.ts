@@ -13,7 +13,7 @@ class LocalStorageProvider implements StorageProvider {
     this.uploadDir = path.join(process.cwd(), "public", "uploads");
   }
 
-  async upload(fileBuffer: Buffer, originalFilename: string): Promise<string> {
+  async upload(fileBuffer: Buffer, originalFilename: string, _mimeType?: string): Promise<string> {
     await fs.mkdir(this.uploadDir, { recursive: true });
 
     const ext = path.extname(originalFilename) || ".jpg";
@@ -38,57 +38,75 @@ class LocalStorageProvider implements StorageProvider {
 }
 
 class CloudinaryStorageProvider implements StorageProvider {
-  private cloudName: string;
-  private apiKey: string;
-  private apiSecret: string;
+  private localFallback = new LocalStorageProvider();
 
   constructor(cloudName: string, apiKey: string, apiSecret: string) {
-    this.cloudName = cloudName;
-    this.apiKey = apiKey;
-    this.apiSecret = apiSecret;
-  }
-
-  async upload(fileBuffer: Buffer, filename: string): Promise<string> {
-    // Standard Cloudinary REST upload using signature
-    const crypto = await import("crypto");
-    const timestamp = Math.round(new Date().getTime() / 1000);
-    const folder = "royal_catalogue";
-    const signatureStr = `folder=${folder}&timestamp=${timestamp}${this.apiSecret}`;
-    const signature = crypto.createHash("sha1").update(signatureStr).digest("hex");
-
-    const formData = new FormData();
-    const blob = new Blob([new Uint8Array(fileBuffer)]);
-    formData.append("file", blob, filename);
-    formData.append("api_key", this.apiKey);
-    formData.append("timestamp", timestamp.toString());
-    formData.append("signature", signature);
-    formData.append("folder", folder);
-
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${this.cloudName}/image/upload`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Cloudinary upload failed: ${err}`);
+    // Configure Cloudinary SDK
+    try {
+      const { v2: cloudinary } = require("cloudinary");
+      cloudinary.config({
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
+        secure: true,
+      });
+    } catch (err) {
+      console.warn("Failed to initialize Cloudinary SDK:", err);
     }
-
-    const data = await response.json();
-    return data.secure_url;
   }
 
-  async delete(): Promise<void> {
-    // Can be extended with Cloudinary destroy API using public_id
+  async upload(fileBuffer: Buffer, filename: string, mimeType: string): Promise<string> {
+    try {
+      const { v2: cloudinary } = await import("cloudinary");
+      const cleanFileName = path.basename(filename, path.extname(filename)).replace(/[^a-zA-Z0-9_-]/g, "_");
+
+      const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "dwara_collections",
+            public_id: `${Date.now()}_${cleanFileName}`,
+            resource_type: "image",
+            quality: "auto",
+            fetch_format: "auto",
+          },
+          (error: any, result: any) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(fileBuffer);
+      });
+
+      return uploadResult.secure_url;
+    } catch (cloudErr) {
+      console.warn("Cloudinary upload failed, falling back to local storage:", cloudErr);
+      return this.localFallback.upload(fileBuffer, filename, mimeType);
+    }
+  }
+
+  async delete(fileUrl: string): Promise<void> {
+    try {
+      if (fileUrl.startsWith("/uploads/")) {
+        await this.localFallback.delete(fileUrl);
+        return;
+      }
+      const { v2: cloudinary } = await import("cloudinary");
+      const matches = fileUrl.match(/\/dwara_collections\/([^/.]+)/);
+      if (matches && matches[1]) {
+        await cloudinary.uploader.destroy(`dwara_collections/${matches[1]}`);
+      }
+    } catch (err) {
+      console.warn("Image deletion failed:", err);
+    }
   }
 }
 
 export function getStorageProvider(): StorageProvider {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
 
-  if (cloudName && apiKey && apiSecret) {
+  if (cloudName && apiKey && apiSecret && cloudName !== "root" && cloudName !== "your_cloud_name") {
     return new CloudinaryStorageProvider(cloudName, apiKey, apiSecret);
   }
 

@@ -19,6 +19,8 @@ import {
   Trash2,
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { IProduct, ICategory } from "@/types";
 import { getProductPlaceholder, getCategoryPlaceholder } from "@/lib/placeholderImages";
@@ -44,6 +46,7 @@ export default function SimpleCataloguePage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<IProduct | null>(null);
+  const [productModalImageIndex, setProductModalImageIndex] = useState(0);
 
   // Cart state
   const [cart, setCart] = useState<Record<string, CartItem>>({});
@@ -133,10 +136,24 @@ export default function SimpleCataloguePage() {
     loadData();
   }, []);
 
+  // Deduplicate categories by slug / name
+  const dedupedCategories = useMemo(() => {
+    const seen = new Set<string>();
+    return categories.filter((cat) => {
+      const key = (cat.slug || cat.name || "").toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [categories]);
+
   // Filter products
   const filteredProducts = useMemo(() => {
-    const activeCat = categories.find(
-      (c) => c._id === selectedCategory || c.slug === selectedCategory
+    const activeCat = dedupedCategories.find(
+      (c) =>
+        c._id === selectedCategory ||
+        c.slug?.toLowerCase() === selectedCategory?.toLowerCase() ||
+        c.name?.toLowerCase() === selectedCategory?.toLowerCase()
     );
 
     return products.filter((p) => {
@@ -192,6 +209,25 @@ export default function SimpleCataloguePage() {
       p.category?.name ||
       "";
     return getProductPlaceholder(catName, p.name);
+  };
+
+  const getProductImages = (p: IProduct): string[] => {
+    const list: string[] = [];
+    if (p.images && p.images.length > 0) {
+      p.images.forEach((img) => {
+        const u = typeof img === "string" ? img : img?.url;
+        if (u) list.push(u);
+      });
+    }
+    if (list.length === 0) {
+      list.push(getPrimaryImage(p));
+    }
+    return list;
+  };
+
+  const openProductModal = (product: IProduct) => {
+    setProductModalImageIndex(0);
+    setSelectedProduct(product);
   };
 
   const getCategoryImageUrl = (cat: ICategory) => {
@@ -1058,7 +1094,7 @@ export default function SimpleCataloguePage() {
         </div>
 
         {/* Circular Category Story Navigation */}
-        {categories.length > 0 && (
+        {dedupedCategories.length > 0 && (
           <div className="mt-2.5 sm:mt-3.5 max-w-5xl mx-auto">
             <div className="flex items-center justify-start sm:justify-center gap-3 sm:gap-5 md:gap-7 overflow-x-auto pt-2 pb-1.5 px-4 no-scrollbar scroll-smooth">
               {/* All Items Avatar */}
@@ -1105,16 +1141,29 @@ export default function SimpleCataloguePage() {
               </button>
 
               {/* Individual Category Avatars */}
-              {categories.map((cat) => {
-                const isSelected = selectedCategory === cat._id;
+              {dedupedCategories.map((cat) => {
+                const isSelected =
+                  selectedCategory === cat._id ||
+                  (cat.slug && selectedCategory?.toLowerCase() === cat.slug.toLowerCase()) ||
+                  (cat.name && selectedCategory?.toLowerCase() === cat.name.toLowerCase());
                 const catImg = getCategoryImageUrl(cat);
                 const catProductCount = products.filter((p) => {
                   const catObj =
                     typeof p.categoryId === "object" && p.categoryId !== null
-                      ? (p.categoryId as { _id?: string; slug?: string })
-                      : (p.category as { _id?: string; slug?: string } | undefined);
+                      ? (p.categoryId as { _id?: string; slug?: string; name?: string })
+                      : (p.category as { _id?: string; slug?: string; name?: string } | undefined);
                   const catId = typeof p.categoryId === "string" ? p.categoryId : catObj?._id;
-                  return catId === cat._id || catObj?.slug === cat.slug;
+                  const catSlug = catObj?.slug?.toLowerCase();
+                  const catName = catObj?.name?.toLowerCase();
+                  const targetSlug = cat.slug?.toLowerCase();
+                  const targetName = cat.name?.toLowerCase();
+
+                  return (
+                    catId === cat._id ||
+                    (catSlug && targetSlug && catSlug === targetSlug) ||
+                    (catName && targetName && catName === targetName) ||
+                    (catName && targetSlug && catName.replace(/[^a-z0-9]/g, "") === targetSlug.replace(/[^a-z0-9]/g, ""))
+                  );
                 }).length;
 
                 return (
@@ -1239,7 +1288,7 @@ export default function SimpleCataloguePage() {
               return (
                 <div
                   key={product._id}
-                  onClick={() => setSelectedProduct(product)}
+                  onClick={() => openProductModal(product)}
                   className="group bg-white hover:bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] hover:border-[#B81862]/60 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_10px_30px_rgba(184,24,98,0.12)]"
                 >
                   {/* Image Stage */}
@@ -1305,11 +1354,11 @@ export default function SimpleCataloguePage() {
                       {/* Price */}
                       <div className="mt-1 sm:mt-1.5 flex items-baseline gap-2">
                         <span className="font-bold text-base sm:text-lg text-[#B81862]">
-                          {formatPrice(product.price)}
+                          {formatPrice(product.discountPrice || product.price)}
                         </span>
                         {product.discountPrice && (
                           <span className="text-xs text-[#777] line-through">
-                            {formatPrice(product.discountPrice)}
+                            {formatPrice(product.price)}
                           </span>
                         )}
                       </div>
@@ -1398,7 +1447,7 @@ export default function SimpleCataloguePage() {
                         {/* WhatsApp Direct Enquiry */}
                         <a
                           href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                            `Hello Dwara Collections, I would like to enquire about: ${product.name} (SKU: ${product.sku || "N/A"}) priced at ${formatPrice(product.price)}.`
+                            `Hello Dwara Collections, I would like to enquire about: ${product.name} (SKU: ${product.sku || "N/A"}) priced at ${formatPrice(product.discountPrice || product.price)}.`
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -1452,123 +1501,220 @@ export default function SimpleCataloguePage() {
       )}
 
       {/* ── PRODUCT DETAIL MODAL ──────────────────────────────────── */}
-      {selectedProduct && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
-          onClick={() => setSelectedProduct(null)}
-        >
+      {selectedProduct && (() => {
+        const modalProductImages = getProductImages(selectedProduct);
+        const currentActiveIdx = Math.min(productModalImageIndex, Math.max(0, modalProductImages.length - 1));
+        const activeImageUrl = modalProductImages[currentActiveIdx] || modalProductImages[0];
+
+        return (
           <div
-            className="bg-white border border-[#F0D6E8] rounded-2xl sm:rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[92vh] md:max-h-[90vh] text-left"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setSelectedProduct(null)}
           >
-            {/* Close */}
-            <button
-              onClick={() => setSelectedProduct(null)}
-              className="absolute top-3 right-3 z-20 p-2 rounded-full bg-white/90 text-gray-800 hover:bg-white hover:text-[#B81862] border border-black/10 transition shadow-md"
+            <div
+              className="bg-white border border-[#F0D6E8] rounded-2xl sm:rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[92vh] md:max-h-[90vh] text-left"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="w-4 h-4" />
-            </button>
+              {/* Close */}
+              <button
+                onClick={() => setSelectedProduct(null)}
+                className="absolute top-3 right-3 z-30 p-2 rounded-full bg-white/90 text-gray-800 hover:bg-white hover:text-[#B81862] border border-black/10 transition shadow-md cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
 
-            {/* Image */}
-            <div className="w-full md:w-1/2 h-52 sm:h-64 md:h-auto max-h-[35vh] md:max-h-none bg-[#FDF0F6] relative shrink-0 border-b md:border-b-0 md:border-r border-[#F0D6E8] flex items-center justify-center overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={getPrimaryImage(selectedProduct)}
-                alt={selectedProduct.name}
-                className="w-full h-full object-cover object-center"
-              />
-              {selectedProduct.isFeatured && (
-                <div className="absolute top-3 left-3">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B81862] text-white shadow-md flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    Featured
-                  </span>
-                </div>
-              )}
-            </div>
+              {/* Image Column */}
+              <div className="w-full md:w-1/2 h-52 sm:h-64 md:h-auto max-h-[35vh] md:max-h-none bg-[#FDF0F6] relative shrink-0 border-b md:border-b-0 md:border-r border-[#F0D6E8] flex items-center justify-center overflow-hidden group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={activeImageUrl}
+                  alt={`${selectedProduct.name} - Photo ${currentActiveIdx + 1}`}
+                  className="w-full h-full object-cover object-center transition-all duration-300"
+                />
 
-            {/* Content */}
-            <div className="p-4 sm:p-6 md:p-7 flex-1 flex flex-col justify-between overflow-y-auto space-y-3.5 sm:space-y-4">
-              <div className="space-y-2.5 sm:space-y-3.5">
-                {/* Category & SKU */}
-                <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862]">
-                    {(typeof selectedProduct.categoryId === "object" && selectedProduct.categoryId !== null
-                      ? (selectedProduct.categoryId as { name?: string })?.name
-                      : null) ||
-                      selectedProduct.category?.name ||
-                      "Fine Jewellery"}
-                  </span>
-                  <span className="font-mono text-[10px] sm:text-[11px] text-[#7A5E6A] bg-[#FFF8FB] px-2 py-0.5 rounded border border-[#F0D6E8]">
-                    SKU: {selectedProduct.sku}
-                  </span>
-                </div>
+                {/* Left navigation arrow */}
+                {modalProductImages.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProductModalImageIndex((prev) =>
+                        prev > 0 ? prev - 1 : modalProductImages.length - 1
+                      );
+                    }}
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black backdrop-blur-md flex items-center justify-center transition shadow-lg z-20 cursor-pointer"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                )}
 
-                <h2 className="font-serif text-lg sm:text-2xl font-bold text-[#111111] leading-snug tracking-tight">
-                  {selectedProduct.name}
-                </h2>
+                {/* Right navigation arrow */}
+                {modalProductImages.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setProductModalImageIndex((prev) =>
+                        prev < modalProductImages.length - 1 ? prev + 1 : 0
+                      );
+                    }}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black backdrop-blur-md flex items-center justify-center transition shadow-lg z-20 cursor-pointer"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
 
-                {/* Price */}
-                <div className="flex items-baseline gap-2.5 pt-0.5 border-b border-[#F0D6E8] pb-2.5 sm:pb-3">
-                  <span className="text-xl sm:text-3xl font-bold text-[#B81862]">
-                    {formatPrice(selectedProduct.discountPrice || selectedProduct.price)}
-                  </span>
-                  {selectedProduct.discountPrice && (
-                    <span className="text-xs text-[#777] line-through font-medium">
-                      {formatPrice(selectedProduct.price)}
+                {/* Dot navigation */}
+                {modalProductImages.length > 1 && (
+                  <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 z-20 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full">
+                    {modalProductImages.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProductModalImageIndex(idx);
+                        }}
+                        className={`h-2 rounded-full transition-all cursor-pointer ${
+                          currentActiveIdx === idx
+                            ? "bg-[#B81862] w-4"
+                            : "bg-white/70 hover:bg-white w-2"
+                        }`}
+                        aria-label={`View photo ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Counter Tag */}
+                {modalProductImages.length > 1 && (
+                  <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-black/60 text-white backdrop-blur-md z-20">
+                    {currentActiveIdx + 1} / {modalProductImages.length}
+                  </div>
+                )}
+
+                {/* Featured Badge */}
+                {selectedProduct.isFeatured && (
+                  <div className="absolute top-3 left-3 z-20">
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B81862] text-white shadow-md flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      Featured
                     </span>
-                  )}
-                </div>
-
-                {/* Stock Info */}
-                <div className="p-2.5 sm:p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs">
-                  <span className="text-[#7A5E6A] font-medium">Stock Status:</span>
-                  <span className="font-bold text-emerald-700">
-                    {selectedProduct.quantity ? `${selectedProduct.quantity} units available` : "In Stock"}
-                  </span>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <h4 className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#7A5E6A] mb-1">About This Piece</h4>
-                  <p className="text-xs text-[#555047] leading-relaxed">
-                    {selectedProduct.description || selectedProduct.shortDescription || "No detailed description available."}
-                  </p>
-                </div>
+                  </div>
+                )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="pt-3 sm:pt-4 border-t border-[#F0D6E8] space-y-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      handleAddToCart(selectedProduct, e);
-                      setShowCartModal(true);
-                      setSelectedProduct(null);
-                    }}
-                    className="flex-1 py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-xs shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    <span>Add to Cart &amp; Request</span>
-                  </button>
+              {/* Content Column */}
+              <div className="p-4 sm:p-6 md:p-7 flex-1 flex flex-col justify-between overflow-y-auto space-y-3.5 sm:space-y-4">
+                <div className="space-y-2.5 sm:space-y-3.5">
+                  {/* Category & SKU */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862]">
+                      {(typeof selectedProduct.categoryId === "object" && selectedProduct.categoryId !== null
+                        ? (selectedProduct.categoryId as { name?: string })?.name
+                        : null) ||
+                        selectedProduct.category?.name ||
+                        "Fine Jewellery"}
+                    </span>
+                    <span className="font-mono text-[10px] sm:text-[11px] text-[#7A5E6A] bg-[#FFF8FB] px-2 py-0.5 rounded border border-[#F0D6E8]">
+                      SKU: {selectedProduct.sku}
+                    </span>
+                  </div>
 
-                  <a
-                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                      `Hello Dwara Collections, I am interested in: ${selectedProduct.name} (SKU: ${selectedProduct.sku || "N/A"}).`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2.5 sm:p-3 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition flex items-center justify-center shadow-md shrink-0"
-                    title="Enquire on WhatsApp"
-                  >
-                    <MessageCircle className="w-4 h-4 fill-white" />
-                  </a>
+                  <h2 className="font-serif text-lg sm:text-2xl font-bold text-[#111111] leading-snug tracking-tight">
+                    {selectedProduct.name}
+                  </h2>
+
+                  {/* Thumbnail Selector Strip (if > 1 image) */}
+                  {modalProductImages.length > 1 && (
+                    <div className="flex items-center gap-2 py-1 overflow-x-auto">
+                      {modalProductImages.map((imgUrl, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setProductModalImageIndex(idx)}
+                          className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition cursor-pointer shrink-0 bg-[#FFF8FB] ${
+                            currentActiveIdx === idx
+                              ? "border-[#B81862] ring-2 ring-[#B81862]/30 scale-105"
+                              : "border-[#F0D6E8] opacity-60 hover:opacity-100"
+                          }`}
+                          title={`View photo ${idx + 1}`}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={imgUrl}
+                            alt={`Thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Price */}
+                  <div className="flex items-baseline gap-2.5 pt-0.5 border-b border-[#F0D6E8] pb-2.5 sm:pb-3">
+                    <span className="text-xl sm:text-3xl font-bold text-[#B81862]">
+                      {formatPrice(selectedProduct.discountPrice || selectedProduct.price)}
+                    </span>
+                    {selectedProduct.discountPrice && (
+                      <span className="text-xs text-[#777] line-through font-medium">
+                        {formatPrice(selectedProduct.price)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Stock Info */}
+                  <div className="p-2.5 sm:p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs">
+                    <span className="text-[#7A5E6A] font-medium">Stock Status:</span>
+                    <span className="font-bold text-emerald-700">
+                      {selectedProduct.quantity ? `${selectedProduct.quantity} units available` : "In Stock"}
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <h4 className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#7A5E6A] mb-1">About This Piece</h4>
+                    <p className="text-xs text-[#555047] leading-relaxed">
+                      {selectedProduct.description || selectedProduct.shortDescription || "No detailed description available."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-3 sm:pt-4 border-t border-[#F0D6E8] space-y-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        handleAddToCart(selectedProduct, e);
+                        setShowCartModal(true);
+                        setSelectedProduct(null);
+                      }}
+                      className="flex-1 py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-xs shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>Add to Cart &amp; Request</span>
+                    </button>
+
+                    <a
+                      href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                        `Hello Dwara Collections, I am interested in: ${selectedProduct.name} (SKU: ${selectedProduct.sku || "N/A"}).`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2.5 sm:p-3 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition flex items-center justify-center shadow-md shrink-0"
+                      title="Enquire on WhatsApp"
+                    >
+                      <MessageCircle className="w-4 h-4 fill-white" />
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── FOOTER ────────────────────────────────────────────────── */}
       <footer className="border-t border-[#F0D6E8] bg-[#FDE8F2] py-6 px-4 text-center text-xs text-[#665F55]">

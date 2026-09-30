@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { Product } from "@/models";
+import mongoose from "mongoose";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -56,11 +57,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       body.discountPrice = body.discountPrice ? Number(body.discountPrice) : null;
     }
 
-    if (body.categoryId) {
-      body.categoryId =
-        typeof body.categoryId === "object" && body.categoryId !== null
-          ? body.categoryId._id
-          : body.categoryId;
+    let categoryIdToSet = body.categoryId;
+    if (categoryIdToSet) {
+      categoryIdToSet =
+        typeof categoryIdToSet === "object" && categoryIdToSet !== null
+          ? (categoryIdToSet._id || categoryIdToSet.slug || categoryIdToSet)
+          : categoryIdToSet;
     }
 
     try {
@@ -80,9 +82,25 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         }
       }
 
+      const updateData = { ...body };
+      if (categoryIdToSet) {
+        if (mongoose.Types.ObjectId.isValid(String(categoryIdToSet))) {
+          updateData.categoryId = new mongoose.Types.ObjectId(String(categoryIdToSet));
+        } else {
+          const CategoryModel = mongoose.models.Category || (await import("@/models")).Category;
+          const foundCat = await CategoryModel.findOne({
+            businessId: session.businessId,
+            $or: [{ slug: categoryIdToSet }, { name: categoryIdToSet }],
+          });
+          if (foundCat) {
+            updateData.categoryId = foundCat._id;
+          }
+        }
+      }
+
       const updated = await Product.findOneAndUpdate(
         { _id: id, businessId: session.businessId },
-        { $set: body },
+        { $set: updateData },
         { new: true, runValidators: true }
       ).populate("categoryId", "name slug");
 
@@ -93,8 +111,22 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       // Fall through to memory store
     }
 
-    const { updateDemoProduct } = await import("@/lib/demoData");
-    const updatedDemo = updateDemoProduct(id, body);
+    const { updateDemoProduct, DEMO_CATEGORIES } = await import("@/lib/demoData");
+    const demoUpdateData = { ...body };
+    if (categoryIdToSet) {
+      const targetCatStr = String(categoryIdToSet).trim();
+      const matchedCat = DEMO_CATEGORIES.find(
+        (c) =>
+          c._id === targetCatStr ||
+          c.slug === targetCatStr ||
+          c.name.toLowerCase() === targetCatStr.toLowerCase()
+      );
+      if (matchedCat) {
+        demoUpdateData.categoryId = { _id: matchedCat._id, name: matchedCat.name, slug: matchedCat.slug };
+      }
+    }
+
+    const updatedDemo = updateDemoProduct(id, demoUpdateData);
     if (!updatedDemo) return NextResponse.json({ error: "Product not found" }, { status: 404 });
 
     return NextResponse.json({ success: true, product: updatedDemo, isFallback: true });
