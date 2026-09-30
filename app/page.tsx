@@ -488,29 +488,29 @@ export default function SimpleCataloguePage() {
       {/* ── CART MODAL / DRAWER ────────────────────────────────────── */}
       {showCartModal && (
         <div
-          className="fixed inset-0 z-[65] flex items-center justify-center sm:justify-end p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[65] flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
           onClick={() => {
             if (!cartSubmitting) setShowCartModal(false);
           }}
         >
           <div
-            className="bg-white border-l sm:border border-[#F0D6E8] sm:rounded-3xl w-full max-w-lg h-full sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-left"
+            className="bg-white border border-[#F0D6E8] rounded-2xl sm:rounded-3xl w-full max-w-lg max-h-[90vh] sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="p-5 border-b border-[#F0D6E8] flex items-center justify-between bg-[#FFF8FB] shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#B81862] text-white flex items-center justify-center shadow-xs">
+            <div className="p-4 sm:p-5 border-b border-[#F0D6E8] flex items-center justify-between bg-[#FFF8FB] shrink-0 gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#B81862] text-white flex items-center justify-center shadow-xs shrink-0">
                   <ShoppingBag className="w-4 h-4" />
                 </div>
-                <div>
-                  <h2 className="font-serif text-lg font-bold text-[#111111]">Your Selected Items</h2>
-                  <p className="text-[11px] text-[#7A5E6A]">
+                <div className="min-w-0">
+                  <h2 className="font-serif text-base sm:text-lg font-bold text-[#111111] truncate">Your Selected Items</h2>
+                  <p className="text-[11px] text-[#7A5E6A] truncate">
                     {totalCartCount} {totalCartCount === 1 ? "piece" : "pieces"} selected for request
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 {cartItemList.length > 0 && !cartSuccess && (
                   <button
                     type="button"
@@ -531,7 +531,7 @@ export default function SimpleCataloguePage() {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 sm:space-y-5">
               {cartSuccess ? (
                 <div className="py-8 text-center space-y-4">
                   <div className="w-16 h-16 rounded-full bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center mx-auto">
@@ -606,60 +606,73 @@ export default function SimpleCataloguePage() {
                       return (
                         <div
                           key={p._id}
-                          className="flex items-center gap-3 p-3 bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] hover:border-[#B81862]/40 transition"
+                          className="p-3 sm:p-3.5 bg-[#FFF8FB] rounded-2xl border border-[#F0D6E8] hover:border-[#B81862]/40 transition space-y-2.5"
                         >
-                          {/* Thumbnail */}
-                          <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-white border border-[#F0D6E8]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={getPrimaryImage(p)}
-                              alt={p.name}
-                              className="w-full h-full object-cover"
-                            />
+                          {/* Top Row: Thumbnail + Details + Trash */}
+                          <div className="flex items-start gap-3">
+                            {/* Thumbnail */}
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden shrink-0 bg-white border border-[#F0D6E8]">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={getPrimaryImage(p)}
+                                alt={p.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-serif font-bold text-xs sm:text-sm text-[#111111] line-clamp-2 leading-snug">
+                                {p.name}
+                              </h4>
+                              <p className="text-[10px] text-[#7A5E6A] font-mono mt-0.5">
+                                SKU: {p.sku || "N/A"}
+                              </p>
+                              <div className="text-xs font-bold text-[#B81862] mt-0.5">
+                                {formatPrice(price)}
+                              </div>
+                            </div>
+
+                            {/* Remove button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFromCart(p._id)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 transition shrink-0"
+                              title="Remove"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
 
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-serif font-bold text-xs text-[#111111] truncate">{p.name}</h4>
-                            <p className="text-[10px] text-[#7A5E6A] font-mono mt-0.5">SKU: {p.sku || "N/A"}</p>
-                            <div className="flex items-baseline gap-1.5 mt-1">
-                              <span className="font-bold text-xs text-[#B81862]">{formatPrice(price)}</span>
-                              {item.quantity > 1 && (
-                                <span className="text-[10px] text-[#7A5E6A]">({formatPrice(lineTotal)} total)</span>
-                              )}
+                          {/* Bottom Row: Quantity Controls & Subtotal */}
+                          <div className="flex items-center justify-between pt-2 border-t border-[#F0D6E8]/70">
+                            <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#F0D6E8] shadow-xs">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCartQuantity(p._id, -1)}
+                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-[#FFF8FB] hover:bg-[#FDF0F6] text-[#B81862] flex items-center justify-center transition cursor-pointer"
+                                title="Decrease"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="w-6 text-center font-bold text-xs text-[#141414]">{item.quantity}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateCartQuantity(p._id, 1)}
+                                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white flex items-center justify-center hover:opacity-90 transition cursor-pointer"
+                                title="Increase"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+
+                            <div className="text-right">
+                              <span className="text-[10px] text-[#7A5E6A] block">Subtotal</span>
+                              <span className="font-bold text-xs text-[#111111] font-mono">
+                                {formatPrice(lineTotal)}
+                              </span>
                             </div>
                           </div>
-
-                          {/* Quantity Controls */}
-                          <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#F0D6E8] shrink-0 shadow-xs">
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateCartQuantity(p._id, -1)}
-                              className="w-7 h-7 rounded-lg bg-[#FFF8FB] hover:bg-[#FDF0F6] text-[#B81862] flex items-center justify-center transition cursor-pointer"
-                              title="Decrease"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-6 text-center font-bold text-xs text-[#141414]">{item.quantity}</span>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateCartQuantity(p._id, 1)}
-                              className="w-7 h-7 rounded-lg bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white flex items-center justify-center hover:opacity-90 transition cursor-pointer"
-                              title="Increase"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-
-                          {/* Trash */}
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFromCart(p._id)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 transition"
-                            title="Remove"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
                       );
                     })}
@@ -1441,23 +1454,23 @@ export default function SimpleCataloguePage() {
       {/* ── PRODUCT DETAIL MODAL ──────────────────────────────────── */}
       {selectedProduct && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
           onClick={() => setSelectedProduct(null)}
         >
           <div
-            className="bg-white border border-[#F0D6E8] rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[90vh] text-left"
+            className="bg-white border border-[#F0D6E8] rounded-2xl sm:rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl relative flex flex-col md:flex-row max-h-[92vh] md:max-h-[90vh] text-left"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close */}
             <button
               onClick={() => setSelectedProduct(null)}
-              className="absolute top-3.5 right-3.5 z-20 p-2 rounded-full bg-white/90 text-gray-800 hover:bg-white hover:text-[#B81862] border border-black/10 transition shadow-md"
+              className="absolute top-3 right-3 z-20 p-2 rounded-full bg-white/90 text-gray-800 hover:bg-white hover:text-[#B81862] border border-black/10 transition shadow-md"
             >
               <X className="w-4 h-4" />
             </button>
 
             {/* Image */}
-            <div className="w-full md:w-1/2 aspect-square md:aspect-auto bg-[#FDF0F6] relative shrink-0 border-b md:border-b-0 md:border-r border-[#F0D6E8]">
+            <div className="w-full md:w-1/2 h-52 sm:h-64 md:h-auto max-h-[35vh] md:max-h-none bg-[#FDF0F6] relative shrink-0 border-b md:border-b-0 md:border-r border-[#F0D6E8] flex items-center justify-center overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={getPrimaryImage(selectedProduct)}
@@ -1465,7 +1478,7 @@ export default function SimpleCataloguePage() {
                 className="w-full h-full object-cover object-center"
               />
               {selectedProduct.isFeatured && (
-                <div className="absolute top-3.5 left-3.5">
+                <div className="absolute top-3 left-3">
                   <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B81862] text-white shadow-md flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
                     Featured
@@ -1475,10 +1488,10 @@ export default function SimpleCataloguePage() {
             </div>
 
             {/* Content */}
-            <div className="p-5 sm:p-7 flex-1 flex flex-col justify-between overflow-y-auto space-y-4">
-              <div className="space-y-3.5">
+            <div className="p-4 sm:p-6 md:p-7 flex-1 flex flex-col justify-between overflow-y-auto space-y-3.5 sm:space-y-4">
+              <div className="space-y-2.5 sm:space-y-3.5">
                 {/* Category & SKU */}
-                <div className="flex items-center justify-between gap-2 flex-wrap pt-1">
+                <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862]">
                     {(typeof selectedProduct.categoryId === "object" && selectedProduct.categoryId !== null
                       ? (selectedProduct.categoryId as { name?: string })?.name
@@ -1486,18 +1499,18 @@ export default function SimpleCataloguePage() {
                       selectedProduct.category?.name ||
                       "Fine Jewellery"}
                   </span>
-                  <span className="font-mono text-[11px] text-[#7A5E6A] bg-[#FFF8FB] px-2 py-0.5 rounded border border-[#F0D6E8]">
+                  <span className="font-mono text-[10px] sm:text-[11px] text-[#7A5E6A] bg-[#FFF8FB] px-2 py-0.5 rounded border border-[#F0D6E8]">
                     SKU: {selectedProduct.sku}
                   </span>
                 </div>
 
-                <h2 className="font-serif text-xl sm:text-2xl font-bold text-[#111111] leading-snug tracking-tight">
+                <h2 className="font-serif text-lg sm:text-2xl font-bold text-[#111111] leading-snug tracking-tight">
                   {selectedProduct.name}
                 </h2>
 
                 {/* Price */}
-                <div className="flex items-baseline gap-2.5 pt-1 border-b border-[#F0D6E8] pb-3">
-                  <span className="text-2xl sm:text-3xl font-bold text-[#B81862]">
+                <div className="flex items-baseline gap-2.5 pt-0.5 border-b border-[#F0D6E8] pb-2.5 sm:pb-3">
+                  <span className="text-xl sm:text-3xl font-bold text-[#B81862]">
                     {formatPrice(selectedProduct.discountPrice || selectedProduct.price)}
                   </span>
                   {selectedProduct.discountPrice && (
@@ -1508,7 +1521,7 @@ export default function SimpleCataloguePage() {
                 </div>
 
                 {/* Stock Info */}
-                <div className="p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs">
+                <div className="p-2.5 sm:p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs">
                   <span className="text-[#7A5E6A] font-medium">Stock Status:</span>
                   <span className="font-bold text-emerald-700">
                     {selectedProduct.quantity ? `${selectedProduct.quantity} units available` : "In Stock"}
@@ -1517,7 +1530,7 @@ export default function SimpleCataloguePage() {
 
                 {/* Description */}
                 <div>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#7A5E6A] mb-1">About This Piece</h4>
+                  <h4 className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#7A5E6A] mb-1">About This Piece</h4>
                   <p className="text-xs text-[#555047] leading-relaxed">
                     {selectedProduct.description || selectedProduct.shortDescription || "No detailed description available."}
                   </p>
@@ -1525,7 +1538,7 @@ export default function SimpleCataloguePage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 border-t border-[#F0D6E8] space-y-2.5">
+              <div className="pt-3 sm:pt-4 border-t border-[#F0D6E8] space-y-2">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={(e) => {
@@ -1533,7 +1546,7 @@ export default function SimpleCataloguePage() {
                       setShowCartModal(true);
                       setSelectedProduct(null);
                     }}
-                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-xs shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer"
+                    className="flex-1 py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white font-bold text-xs shadow-md hover:opacity-95 transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <ShoppingBag className="w-4 h-4" />
                     <span>Add to Cart &amp; Request</span>
@@ -1545,7 +1558,7 @@ export default function SimpleCataloguePage() {
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="p-3 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition flex items-center justify-center shadow-md"
+                    className="p-2.5 sm:p-3 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition flex items-center justify-center shadow-md shrink-0"
                     title="Enquire on WhatsApp"
                   >
                     <MessageCircle className="w-4 h-4 fill-white" />
