@@ -63,7 +63,7 @@ export default function ProductDetailView({
     setProductUrl(window.location.href);
   }, []);
 
-  const cleanPhone = (business.whatsapp || "919876543210").replace(/[^0-9]/g, "");
+  const cleanPhone = (business.whatsapp || "919581335925").replace(/[^0-9]/g, "");
   const whatsappMessage = `Hi ${business.name}, I am interested in ${product.name}.\n\nProduct Code: ${product.sku}\nPrice: ₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(product.discountPrice || product.price)}\nCatalogue Link: ${productUrl}`;
   const whatsappEnquiryUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
@@ -177,7 +177,7 @@ export default function ProductDetailView({
                   {categoryName}
                 </span>
                 <span className="font-mono text-xs text-[#666] dark:text-[#aaa] bg-[#F2ECE1] dark:bg-[#222] px-2.5 py-1 rounded-md border border-[#E4DCCE] dark:border-[#333]">
-                  SKU: {product.sku}
+                  Product ID: {product.sku}
                 </span>
               </div>
 
@@ -275,6 +275,24 @@ export default function ProductDetailView({
                 href={whatsappEnquiryUrl}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => {
+                  fetch("/api/public/requests", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      productId: product._id,
+                      productName: product.name,
+                      productSku: product.sku,
+                      productImage: primaryImage,
+                      visitorName: "Store Visitor",
+                      visitorPhone: "WhatsApp Enquiry",
+                      quantity: 1,
+                      source: "whatsapp",
+                      isWhatsAppEnquiry: true,
+                      description: `Product detail page enquiry`,
+                    }),
+                  }).catch(() => {});
+                }}
                 className="w-full flex items-center justify-center gap-2.5 py-3.5 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-black font-bold text-sm transition shadow-lg shadow-[#25D366]/20 active:scale-[0.99]"
               >
                 <MessageCircle className="w-5 h-5 fill-black" />

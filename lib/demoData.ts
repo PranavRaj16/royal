@@ -25,6 +25,7 @@ export interface IDemoProduct {
   showQuantity?: boolean;
   quantity: number;
   stockStatus: "in_stock" | "out_of_stock" | "made_to_order";
+  location?: string;
   isFeatured: boolean;
   isPublished: boolean;
   tags: string[];
@@ -501,6 +502,7 @@ export function addDemoProduct(product: Partial<IDemoProduct>): IDemoProduct {
     showQuantity: product.showQuantity ?? true,
     quantity: product.quantity ?? 5,
     stockStatus: product.stockStatus || "in_stock",
+    location: product.location?.trim() || "",
     isFeatured: !!product.isFeatured,
     isPublished: product.isPublished !== false,
     tags: product.tags || [],
@@ -652,26 +654,113 @@ export interface IDemoRequest {
   productId?: string;
   productName: string;
   productSku?: string;
+  productImage?: string;
   visitorName: string;
   visitorPhone: string;
   quantity: number;
   description?: string;
-  status: "pending" | "contacted" | "fulfilled" | "cancelled";
+  status: "pending" | "contacted" | "in-progress" | "fulfilled" | "cancelled";
+  isQuantityDeducted?: boolean;
+  source?: "whatsapp" | "order" | "quick-request" | "cart";
+  isWhatsAppEnquiry?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export const DEMO_REQUESTS: IDemoRequest[] = [
   {
+    _id: "req-wa-1",
+    orderId: "DW-WA-901001",
+    productName: "The Imperial Nizam Emerald & Solitaire Necklace",
+    productSku: "RJ-NC-001",
+    productImage: "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?auto=format&fit=crop&w=800&q=80",
+    visitorName: "Pranav Raj",
+    visitorPhone: "+91 95813 35925",
+    quantity: 1,
+    description: "Can you provide customization for matching earrings? Also would love to see a live video on WhatsApp.",
+    status: "pending",
+    source: "whatsapp",
+    isWhatsAppEnquiry: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+  },
+  {
+    _id: "req-wa-2",
+    orderId: "DW-WA-901002",
+    productName: "Eternity Cushion Cut Solitaire Diamond Ring",
+    productSku: "RJ-RG-104",
+    productImage: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=80",
+    visitorName: "Pranav Raj",
+    visitorPhone: "+91 95813 35925",
+    quantity: 1,
+    description: "What is the certified ring size available for immediate dispatch? Need it for an engagement next week.",
+    status: "contacted",
+    source: "whatsapp",
+    isWhatsAppEnquiry: true,
+    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 90).toISOString(),
+  },
+  {
+    _id: "req-wa-3",
+    orderId: "DW-WA-901003",
+    productName: "Maharani Royal Jadau Polki Bridal Choker Set",
+    productSku: "RJ-BD-201",
+    productImage: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?auto=format&fit=crop&w=800&q=80",
+    visitorName: "Pranav Raj",
+    visitorPhone: "+91 95813 35925",
+    quantity: 1,
+    description: "Please share hallmarking certificate details and final negotiable price for bridal set.",
+    status: "in-progress",
+    source: "whatsapp",
+    isWhatsAppEnquiry: true,
+    createdAt: new Date(Date.now() - 3600000 * 8).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+  },
+  {
+    _id: "req-wa-4",
+    orderId: "DW-WA-901004",
+    productName: "Solitaire Rose Cut Diamond Studs",
+    productSku: "RJ-ER-302",
+    productImage: "https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=800&q=80",
+    visitorName: "Radhika Mehra",
+    visitorPhone: "+91 98450 11223",
+    quantity: 1,
+    description: "Are these available in 22K yellow gold instead of white gold?",
+    status: "pending",
+    source: "whatsapp",
+    isWhatsAppEnquiry: true,
+    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+  },
+  {
+    _id: "req-wa-5",
+    orderId: "DW-WA-901005",
+    productName: "Heritage Temple Nakshi Peacock Kada",
+    productSku: "RJ-BG-401",
+    productImage: "https://images.unsplash.com/photo-1611591475102-468ae7048a1d?auto=format&fit=crop&w=800&q=80",
+    visitorName: "Deepak Sharma",
+    visitorPhone: "+91 98200 44556",
+    quantity: 2,
+    description: "Looking for size 2.6 in 24K gold foil antique finish. Please reply with availability.",
+    status: "fulfilled",
+    source: "whatsapp",
+    isWhatsAppEnquiry: true,
+    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000 * 18).toISOString(),
+  },
+  {
     _id: "req-1",
     orderId: "DW-ORD-881204",
     productName: "The Imperial Nizam Emerald & Solitaire Necklace",
     productSku: "RJ-NC-001",
+    productImage: "https://images.unsplash.com/photo-1599643477877-530eb83abc8e?auto=format&fit=crop&w=800&q=80",
     visitorName: "Ananya Deshmukh",
     visitorPhone: "+91 98201 12345",
     quantity: 1,
     description: "Interested in matching earrings as well. Please call between 3 PM and 6 PM.",
     status: "pending",
+    source: "cart",
+    isWhatsAppEnquiry: false,
     createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
     updatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
   },
@@ -680,21 +769,65 @@ export const DEMO_REQUESTS: IDemoRequest[] = [
     orderId: "DW-ORD-881205",
     productName: "Royal Jaipur Navratna Choker",
     productSku: "RJ-NC-002",
+    productImage: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=80",
     visitorName: "Vikram Singhania",
     visitorPhone: "+91 98110 54321",
     quantity: 2,
     description: "Need for a wedding next month. Please share customization options in rose gold.",
     status: "contacted",
+    source: "quick-request",
+    isWhatsAppEnquiry: false,
     createdAt: new Date(Date.now() - 3600000 * 18).toISOString(),
     updatedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
   },
 ];
 
+function extractDemoCategoryCode(catName?: string, fallbackText?: string): string {
+  const text = catName || fallbackText || "";
+  const cleaned = text.replace(/[^a-zA-Z\s]/g, " ").trim();
+  if (!cleaned) return "GN";
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  } else if (words.length === 1) {
+    const w = words[0].toUpperCase();
+    if (w.startsWith("EARRING")) return "ER";
+    if (w.startsWith("RING")) return "RG";
+    if (w.startsWith("NECKLACE")) return "NC";
+    if (w.startsWith("CHAIN")) return "CH";
+    if (w.startsWith("BANGLE")) return "BG";
+    if (w.startsWith("BRACELET")) return "BR";
+    if (w.startsWith("PENDANT")) return "PD";
+    if (w.startsWith("MANGALSUTRA")) return "MS";
+    if (w.startsWith("HARAM") || w.startsWith("HAARAM")) return "HM";
+    if (w.startsWith("CHOKER")) return "CK";
+    return w.slice(0, 2).padEnd(2, "X").toUpperCase();
+  }
+  return "GN";
+}
+
+function getDemoFormattedDate(d = new Date()): string {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}${month}${year}`;
+}
+
 export function createDemoRequest(data: Omit<IDemoRequest, "_id" | "createdAt" | "updatedAt">): IDemoRequest {
   ensureLoaded();
-  const timestamp = Date.now().toString().slice(-6);
-  const rand = Math.floor(10 + Math.random() * 90);
-  const generatedOrderId = data.orderId || `DW-ORD-${timestamp}${rand}`;
+  const dateStr = getDemoFormattedDate();
+  const catCode = extractDemoCategoryCode(undefined, data.productName);
+
+  let generatedOrderId = data.orderId;
+  if (!generatedOrderId) {
+    const prefix = `DW-${catCode}-${dateStr}`;
+    const distinctOrders = new Set(
+      DEMO_REQUESTS.filter((r) => r.orderId && r.orderId.includes(`-${dateStr}`)).map((r) => r.orderId)
+    );
+    const seq = String(distinctOrders.size + 1).padStart(3, "0");
+    generatedOrderId = `${prefix}${seq}`;
+  }
 
   const newReq: IDemoRequest = {
     _id: "req-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
@@ -712,8 +845,17 @@ export function updateDemoRequest(id: string, updates: Partial<IDemoRequest>): I
   ensureLoaded();
   const index = DEMO_REQUESTS.findIndex((r) => r._id === id);
   if (index === -1) return null;
+  const existing = DEMO_REQUESTS[index];
+
+  if (updates.status === "in-progress" && !existing.isQuantityDeducted) {
+    if (existing.productId) {
+      decrementDemoProductQuantity(existing.productId, existing.quantity || 1);
+    }
+    updates.isQuantityDeducted = true;
+  }
+
   DEMO_REQUESTS[index] = {
-    ...DEMO_REQUESTS[index],
+    ...existing,
     ...updates,
     updatedAt: new Date().toISOString(),
   };

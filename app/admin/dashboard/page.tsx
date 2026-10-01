@@ -613,7 +613,7 @@ export default function AdminDashboard() {
                         {p.name}
                       </span>
                       <span className="block text-xs text-[var(--muted)] truncate">
-                        {cat || "Uncategorized"} • SKU: {p.sku}
+                        {cat || "Uncategorized"} • Product ID: {p.sku}
                       </span>
                     </div>
                     <div className="text-right shrink-0">

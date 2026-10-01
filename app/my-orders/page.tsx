@@ -22,9 +22,10 @@ import {
   Calendar,
   Eye,
   X,
+  Timer,
 } from "lucide-react";
 
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP || "919876543210";
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP || "919581335925";
 
 interface CustomerInfo {
   name: string;
@@ -38,7 +39,7 @@ interface Order {
   productSku?: string;
   quantity: number;
   description?: string;
-  status: "pending" | "contacted" | "fulfilled" | "cancelled";
+  status: "pending" | "contacted" | "in-progress" | "fulfilled" | "cancelled";
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +61,13 @@ const statusConfig: Record<
     bg: "bg-blue-50",
     border: "border-blue-200",
     iconName: "phone",
+  },
+  "in-progress": {
+    label: "In Progress",
+    color: "text-purple-700",
+    bg: "bg-purple-50",
+    border: "border-purple-200",
+    iconName: "timer",
   },
   fulfilled: {
     label: "Fulfilled",
@@ -94,6 +102,8 @@ function StatusIcon({ status }: { status: Order["status"] }) {
       return <Clock className="w-3.5 h-3.5" />;
     case "contacted":
       return <Phone className="w-3.5 h-3.5" />;
+    case "in-progress":
+      return <Timer className="w-3.5 h-3.5" />;
     case "fulfilled":
       return <CheckCircle2 className="w-3.5 h-3.5" />;
     case "cancelled":
@@ -223,7 +233,7 @@ function OrderDetailModal({ order, onClose }: { order: Order; onClose: () => voi
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-sm text-[#111111] leading-tight">{order.productName}</p>
-                {order.productSku && <p className="text-[11px] text-[#7A5E6A] font-mono mt-0.5">SKU: {order.productSku}</p>}
+                {order.productSku && <p className="text-[11px] text-[#7A5E6A] font-mono mt-0.5">Product ID: {order.productSku}</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#F0D6E8]">
@@ -245,6 +255,7 @@ function OrderDetailModal({ order, onClose }: { order: Order; onClose: () => voi
           )}
           {order.status === "pending" && <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl"><p className="text-xs text-amber-800 leading-relaxed">🔔 Your request is being reviewed. Our concierge will contact you shortly.</p></div>}
           {order.status === "contacted" && <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl"><p className="text-xs text-blue-800 leading-relaxed">📞 Our team has reached out to you. Please check your phone / WhatsApp.</p></div>}
+          {order.status === "in-progress" && <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl"><p className="text-xs text-purple-800 leading-relaxed">⏳ Your order is currently in progress and being prepared.</p></div>}
         </div>
         <div className="flex gap-2.5 mt-5">
           <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="flex-1 py-3 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-[#20ba59] transition">
@@ -293,6 +304,7 @@ function Dashboard({ customer }: { customer: CustomerInfo }) {
   const statusCounts = {
     pending: orders.filter((o) => o.status === "pending").length,
     contacted: orders.filter((o) => o.status === "contacted").length,
+    "in-progress": orders.filter((o) => o.status === "in-progress").length,
     fulfilled: orders.filter((o) => o.status === "fulfilled").length,
     cancelled: orders.filter((o) => o.status === "cancelled").length,
   };
@@ -349,13 +361,13 @@ function Dashboard({ customer }: { customer: CustomerInfo }) {
           </div>
           <div className="mt-5 grid grid-cols-3 gap-2">
             {[
-              { label: "Pending", count: statusCounts.pending, color: "bg-amber-400/20 text-amber-200" },
-              { label: "Contacted", count: statusCounts.contacted, color: "bg-blue-400/20 text-blue-200" },
-              { label: "Fulfilled", count: statusCounts.fulfilled, color: "bg-emerald-400/20 text-emerald-200" },
-            ].map(({ label, count, color }) => (
-              <div key={label} className={`rounded-2xl p-2.5 text-center ${color}`}>
-                <div className="text-xl font-bold">{count}</div>
-                <div className="text-[10px] font-semibold opacity-90">{label}</div>
+              { label: "Pending", count: statusCounts.pending },
+              { label: "Contacted", count: statusCounts.contacted },
+              { label: "Fulfilled", count: statusCounts.fulfilled },
+            ].map(({ label, count }) => (
+              <div key={label} className="bg-white rounded-2xl p-2.5 text-center border border-[#B81862] shadow-sm">
+                <div className="text-xl font-bold text-[#B81862]">{count}</div>
+                <div className="text-[10px] font-semibold text-[#B81862]">{label}</div>
               </div>
             ))}
           </div>
@@ -379,7 +391,7 @@ function Dashboard({ customer }: { customer: CustomerInfo }) {
         {/* Orders */}
         <div>
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {(["all", "pending", "contacted", "fulfilled", "cancelled"] as const).map((tab) => {
+            {(["all", "pending", "contacted", "in-progress", "fulfilled", "cancelled"] as const).map((tab) => {
               const isActive = activeTab === tab;
               const count = tab === "all" ? orders.length : statusCounts[tab];
               return (

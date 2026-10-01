@@ -46,6 +46,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       discountPrice: original.discountPrice,
       showPrice: original.showPrice,
       stockStatus: original.stockStatus,
+      location: original.location || "",
       images: original.images,
       specifications: original.specifications,
       tags: original.tags,

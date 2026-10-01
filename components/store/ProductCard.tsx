@@ -46,9 +46,9 @@ export default function ProductCard({
   // The WhatsApp link opens externally so the full URL isn't strictly needed here.
   const productPath = `/store/${businessSlug}/product/${product.slug}`;
 
-  const cleanWhatsapp = whatsappNumber?.replace(/[^0-9]/g, "") || "919876543210";
+  const cleanWhatsapp = whatsappNumber?.replace(/[^0-9]/g, "") || "919581335925";
   const whatsappEnquiryUrl = `https://wa.me/${cleanWhatsapp}?text=${encodeURIComponent(
-    `Hi ${businessName || "Dwara Collections"}, I am interested in ${product.name} (SKU: ${product.sku}). Catalogue: ${productPath}`
+    `Hi ${businessName || "Dwara Collections"}, I am interested in ${product.name} (Product ID: ${product.sku}). Catalogue: ${productPath}`
   )}`;
 
   return (
@@ -90,6 +90,24 @@ export default function ProductCard({
             href={whatsappEnquiryUrl}
             target="_blank"
             rel="noreferrer"
+            onClick={() => {
+              fetch("/api/public/requests", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  productId: product._id,
+                  productName: product.name,
+                  productSku: product.sku,
+                  productImage: primaryImage,
+                  visitorName: "Store Visitor",
+                  visitorPhone: "WhatsApp Enquiry",
+                  quantity: 1,
+                  source: "whatsapp",
+                  isWhatsAppEnquiry: true,
+                  description: `Direct enquiry from store catalogue`,
+                }),
+              }).catch(() => {});
+            }}
             className="p-2.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg transition flex items-center justify-center"
             title="Enquire on WhatsApp"
           >
@@ -115,7 +133,7 @@ export default function ProductCard({
             {product.name}
           </Link>
           <span className="text-[11px] font-mono text-[#736E66] dark:text-[#a0a0a0] block mt-0.5">
-            SKU: {product.sku}
+            Product ID: {product.sku}
           </span>
         </div>
 

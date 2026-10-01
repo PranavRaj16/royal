@@ -5,10 +5,60 @@ import mongoose from "mongoose";
 import crypto from "crypto";
 import { sendAdminOrderNotification } from "@/lib/email";
 
-function generateOrderId(): string {
-  const timestamp = Date.now().toString().slice(-6);
-  const rand = Math.floor(10 + Math.random() * 90);
-  return `DW-ORD-${timestamp}${rand}`;
+function extractCategoryCode(catName?: string, fallbackText?: string): string {
+  const text = catName || fallbackText || "";
+  const cleaned = text.replace(/[^a-zA-Z\s]/g, " ").trim();
+  if (!cleaned) return "GN";
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  } else if (words.length === 1) {
+    const w = words[0].toUpperCase();
+    if (w.startsWith("EARRING")) return "ER";
+    if (w.startsWith("RING")) return "RG";
+    if (w.startsWith("NECKLACE")) return "NC";
+    if (w.startsWith("CHAIN")) return "CH";
+    if (w.startsWith("BANGLE")) return "BG";
+    if (w.startsWith("BRACELET")) return "BR";
+    if (w.startsWith("PENDANT")) return "PD";
+    if (w.startsWith("MANGALSUTRA")) return "MS";
+    if (w.startsWith("HARAM") || w.startsWith("HAARAM")) return "HM";
+    if (w.startsWith("CHOKER")) return "CK";
+    return w.slice(0, 2).padEnd(2, "X").toUpperCase();
+  }
+  return "GN";
+}
+
+function getFormattedDate(d = new Date()): string {
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear()).slice(-2);
+  return `${day}${month}${year}`;
+}
+
+async function createNewOrderId(catCode: string): Promise<string> {
+  const dateStr = getFormattedDate();
+  const prefix = `DW-${catCode}-${dateStr}`;
+
+  try {
+    const existing = await ItemRequest.find({
+      orderId: { $regex: `^DW-.*-${dateStr}` },
+    })
+      .select("orderId")
+      .lean();
+
+    const distinct = new Set<string>();
+    existing.forEach((r: any) => {
+      if (r.orderId) distinct.add(r.orderId);
+    });
+
+    const seq = String(distinct.size + 1).padStart(3, "0");
+    return `${prefix}${seq}`;
+  } catch {
+    const randSeq = Math.floor(1 + Math.random() * 9);
+    return `${prefix}00${randSeq}`;
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -19,7 +69,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, error: "Invalid JSON payload" }, { status: 400 });
   }
 
-  const { productId, productName, productSku, visitorName, visitorPhone, quantity, description, items } = body;
+  const { productId, productName, productSku, productImage, visitorName, visitorPhone, quantity, description, items } = body;
 
   const cleanVisitorName = visitorName ? String(visitorName).trim() : "";
   const cleanVisitorPhone = visitorPhone ? String(visitorPhone).trim() : "";
@@ -51,10 +101,46 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const orderId = body.orderId ? String(body.orderId).trim() : generateOrderId();
-
   try {
     await connectToDatabase();
+
+    // Determine category code & generate Order ID (e.g. DW-PC-011026001)
+    let catCode = "GN";
+    if (isBatch) {
+      const firstItem = (items as Array<Record<string, unknown>>)[0];
+      const firstPId = firstItem?.productId;
+      const firstPName = String(firstItem?.productName || "");
+      if (firstPId && mongoose.Types.ObjectId.isValid(String(firstPId))) {
+        try {
+          const p = (await Product.findById(firstPId).populate("categoryId").lean()) as any;
+          const catName = p?.categoryId?.name || p?.category?.name || "";
+          catCode = extractCategoryCode(catName, firstPName);
+        } catch {
+          catCode = extractCategoryCode(undefined, firstPName);
+        }
+      } else {
+        catCode = extractCategoryCode(undefined, firstPName);
+      }
+    } else {
+      const cleanProductName = String(productName).trim();
+      const validProductId =
+        productId && mongoose.Types.ObjectId.isValid(String(productId)) && String(productId).length === 24
+          ? new mongoose.Types.ObjectId(String(productId))
+          : undefined;
+      if (validProductId) {
+        try {
+          const p = (await Product.findById(validProductId).populate("categoryId").lean()) as any;
+          const catName = p?.categoryId?.name || p?.category?.name || "";
+          catCode = extractCategoryCode(catName, cleanProductName);
+        } catch {
+          catCode = extractCategoryCode(undefined, cleanProductName);
+        }
+      } else {
+        catCode = extractCategoryCode(undefined, cleanProductName);
+      }
+    }
+
+    const orderId = body.orderId ? String(body.orderId).trim() : await createNewOrderId(catCode);
 
     // Get or create default business
     let business = await Business.findOne({});
@@ -75,6 +161,9 @@ export async function POST(request: NextRequest) {
       }).catch(() => null);
     }
 
+    const reqSource = body.source === "whatsapp" || body.isWhatsAppEnquiry ? "whatsapp" : (body.source || (isBatch ? "cart" : "quick-request"));
+    const isWhatsApp = reqSource === "whatsapp";
+
     if (isBatch) {
       const itemsToCreate = (items as Array<Record<string, unknown>>).map((it) => {
         const pId = it.productId && mongoose.Types.ObjectId.isValid(String(it.productId)) && String(it.productId).length === 24
@@ -85,35 +174,19 @@ export async function POST(request: NextRequest) {
           productId: pId,
           productName: String(it.productName || "Jewellery Item").trim(),
           productSku: it.productSku ? String(it.productSku).trim() : "",
+          productImage: it.productImage ? String(it.productImage).trim() : (it.image ? String(it.image).trim() : ""),
           visitorName: cleanVisitorName,
           visitorPhone: cleanVisitorPhone,
           quantity: Math.max(1, Number(it.quantity) || 1),
           description: cleanDescription,
           status: "pending" as const,
           orderId,
+          source: reqSource,
+          isWhatsAppEnquiry: isWhatsApp,
         };
       });
 
       const createdList = await ItemRequest.insertMany(itemsToCreate);
-
-      // Decrement product quantities in MongoDB
-      for (const it of itemsToCreate) {
-        if (it.productId) {
-          try {
-            const p = await Product.findById(it.productId);
-            if (p) {
-              const newQty = Math.max(0, (p.quantity ?? 10) - it.quantity);
-              p.quantity = newQty;
-              if (newQty <= 0) {
-                p.stockStatus = "out_of_stock";
-              }
-              await p.save();
-            }
-          } catch (pErr) {
-            console.warn("[public/requests] Could not decrement product quantity:", pErr);
-          }
-        }
-      }
 
       // Trigger admin email notification asynchronously
       sendAdminOrderNotification({
@@ -124,6 +197,7 @@ export async function POST(request: NextRequest) {
         items: itemsToCreate.map((it) => ({
           productName: it.productName,
           productSku: it.productSku,
+          productImage: it.productImage,
           quantity: it.quantity,
           productId: it.productId ? String(it.productId) : undefined,
         })),
@@ -136,6 +210,7 @@ export async function POST(request: NextRequest) {
     // Single item request
     const cleanProductName = String(productName).trim();
     const cleanProductSku = productSku ? String(productSku).trim() : "";
+    const cleanProductImage = productImage ? String(productImage).trim() : (body.image ? String(body.image).trim() : "");
     const cleanQuantity = Math.max(1, Number(quantity) || 1);
 
     const validProductId =
@@ -148,30 +223,16 @@ export async function POST(request: NextRequest) {
       productId: validProductId,
       productName: cleanProductName,
       productSku: cleanProductSku,
+      productImage: cleanProductImage,
       visitorName: cleanVisitorName,
       visitorPhone: cleanVisitorPhone,
       quantity: cleanQuantity,
       description: cleanDescription,
       status: "pending",
       orderId,
+      source: reqSource,
+      isWhatsAppEnquiry: isWhatsApp,
     });
-
-    // Decrement product quantity in MongoDB
-    if (validProductId) {
-      try {
-        const p = await Product.findById(validProductId);
-        if (p) {
-          const newQty = Math.max(0, (p.quantity ?? 10) - cleanQuantity);
-          p.quantity = newQty;
-          if (newQty <= 0) {
-            p.stockStatus = "out_of_stock";
-          }
-          await p.save();
-        }
-      } catch (pErr) {
-        console.warn("[public/requests] Could not decrement product quantity:", pErr);
-      }
-    }
 
     // Trigger admin email notification asynchronously
     sendAdminOrderNotification({
@@ -193,25 +254,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, request: itemRequest, orderId }, { status: 201 });
   } catch (dbErr) {
     console.warn("[public/requests POST] MongoDB write error, saving to demo fallback:", dbErr);
-    const { createDemoRequest, decrementDemoProductQuantity } = await import("@/lib/demoData");
+    const { createDemoRequest } = await import("@/lib/demoData");
+
+    const dateStr = getFormattedDate();
+    const fallbackCatCode = isBatch
+      ? extractCategoryCode(undefined, String((items as any)[0]?.productName || ""))
+      : extractCategoryCode(undefined, String(productName || ""));
+    const orderId = body.orderId
+      ? String(body.orderId).trim()
+      : `DW-${fallbackCatCode}-${dateStr}001`;
 
     if (isBatch) {
       const createdFallback = (items as Array<Record<string, unknown>>).map((it) => {
         const pIdStr = it.productId ? String(it.productId) : undefined;
         const qty = Math.max(1, Number(it.quantity) || 1);
-        if (pIdStr) {
-          decrementDemoProductQuantity(pIdStr, qty);
-        }
+        const pImg = it.productImage ? String(it.productImage).trim() : (it.image ? String(it.image).trim() : "");
         return createDemoRequest({
           productId: pIdStr,
           productName: String(it.productName || "Jewellery Item").trim(),
           productSku: it.productSku ? String(it.productSku).trim() : "",
+          productImage: pImg,
           visitorName: cleanVisitorName,
           visitorPhone: cleanVisitorPhone,
           quantity: qty,
           description: cleanDescription,
           status: "pending",
           orderId,
+          source: reqSource,
+          isWhatsAppEnquiry: isWhatsApp,
         });
       });
 
@@ -224,6 +294,7 @@ export async function POST(request: NextRequest) {
         items: (items as Array<Record<string, unknown>>).map((it) => ({
           productName: String(it.productName || "Jewellery Item").trim(),
           productSku: it.productSku ? String(it.productSku).trim() : "",
+          productImage: it.productImage ? String(it.productImage).trim() : undefined,
           quantity: Math.max(1, Number(it.quantity) || 1),
           productId: it.productId ? String(it.productId) : undefined,
         })),
@@ -234,20 +305,21 @@ export async function POST(request: NextRequest) {
     }
 
     const cleanSingleQty = Math.max(1, Number(quantity) || 1);
-    if (productId) {
-      decrementDemoProductQuantity(String(productId), cleanSingleQty);
-    }
+    const cleanSingleImg = productImage ? String(productImage).trim() : (body.image ? String(body.image).trim() : "");
 
     const demoReq = createDemoRequest({
       productId: productId ? String(productId) : undefined,
       productName: String(productName).trim(),
       productSku: productSku ? String(productSku).trim() : "",
+      productImage: cleanSingleImg,
       visitorName: cleanVisitorName,
       visitorPhone: cleanVisitorPhone,
       quantity: cleanSingleQty,
       description: cleanDescription,
       status: "pending",
       orderId,
+      source: reqSource,
+      isWhatsAppEnquiry: isWhatsApp,
     });
 
     // Trigger admin email notification asynchronously

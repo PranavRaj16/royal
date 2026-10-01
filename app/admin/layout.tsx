@@ -14,6 +14,7 @@ import {
   Inbox,
   MessageCircle,
   Settings,
+  Users,
 } from "lucide-react";
 import { IBusiness } from "@/types";
 
@@ -22,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/admin/products", icon: Package, label: "Products" },
   { href: "/admin/requests", icon: Inbox, label: "Orders" },
   { href: "/admin/whatsapp-requests", icon: MessageCircle, label: "Requests" },
+  { href: "/admin/customers", icon: Users, label: "Customers" },
   { href: "/admin/settings", icon: Settings, label: "Settings" },
 ];
 

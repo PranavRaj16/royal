@@ -161,7 +161,7 @@ export async function sendAdminOrderNotification(payload: AdminOrderNotification
                     <thead>
                       <tr style="background-color: #fef3c7; color: #92400e;">
                         <th style="padding: 10px 16px; font-size: 12px; text-transform: uppercase;">Product</th>
-                        <th style="padding: 10px 16px; font-size: 12px; text-transform: uppercase;">SKU</th>
+                        <th style="padding: 10px 16px; font-size: 12px; text-transform: uppercase;">Product ID</th>
                         <th style="padding: 10px 16px; font-size: 12px; text-transform: uppercase; text-align: center;">Qty</th>
                       </tr>
                     </thead>

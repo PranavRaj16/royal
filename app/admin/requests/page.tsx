@@ -20,17 +20,20 @@ import {
   AlertCircle,
   ShoppingBag,
   Check,
+  Timer,
 } from "lucide-react";
 
 interface ItemRequest {
   _id: string;
+  productId?: string;
   productName: string;
   productSku?: string;
+  productImage?: string;
   visitorName: string;
   visitorPhone: string;
   quantity: number;
   description?: string;
-  status: "pending" | "contacted" | "fulfilled" | "cancelled";
+  status: "pending" | "contacted" | "in-progress" | "fulfilled" | "cancelled";
   orderId?: string;
   createdAt: string;
 }
@@ -42,7 +45,7 @@ interface OrderGroup {
   visitorPhone: string;
   description?: string;
   createdAt: string;
-  status: "pending" | "contacted" | "fulfilled" | "cancelled";
+  status: "pending" | "contacted" | "in-progress" | "fulfilled" | "cancelled";
   items: ItemRequest[];
 }
 
@@ -60,6 +63,13 @@ const STATUS_CONFIG = {
     iconColor: "text-blue-600 dark:text-blue-400",
     dot: "bg-blue-500",
     icon: Phone,
+  },
+  "in-progress": {
+    label: "In Progress",
+    color: "text-purple-700 dark:text-purple-300 bg-purple-500/10 border-purple-500/30",
+    iconColor: "text-purple-600 dark:text-purple-400",
+    dot: "bg-purple-500",
+    icon: Timer,
   },
   fulfilled: {
     label: "Fulfilled",
@@ -287,6 +297,7 @@ export default function AdminRequestsPage() {
   const [updatingKey, setUpdatingKey] = useState<string | null>(null);
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
   const [pendingDeleteGroup, setPendingDeleteGroup] = useState<OrderGroup | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ url: string; name: string } | null>(null);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
@@ -312,7 +323,7 @@ export default function AdminRequestsPage() {
   const fetchRequests = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch("/api/admin/requests?limit=200", {
+      const res = await fetch("/api/admin/requests?source=orders&limit=200", {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       });
@@ -322,11 +333,11 @@ export default function AdminRequestsPage() {
         setRequests(list);
         syncSidebarPendingCount(list);
       } else if (!silent) {
-        showToast("Failed to load requests", "error");
+        showToast("Failed to load orders", "error");
       }
     } catch (err) {
       console.error(err);
-      if (!silent) showToast("Failed to load requests", "error");
+      if (!silent) showToast("Failed to load orders", "error");
     } finally {
       if (!silent) setLoading(false);
     }
@@ -399,20 +410,15 @@ export default function AdminRequestsPage() {
 
     // 2. Perform API delete
     try {
-      let isSuccess = false;
-      if (group.orderId) {
-        const res = await fetch(`/api/admin/requests?orderId=${encodeURIComponent(group.orderId)}`, {
-          method: "DELETE",
-        });
-        isSuccess = res.ok;
-      } else {
-        const results = await Promise.all(
-          group.items.map((item) =>
-            fetch(`/api/admin/requests/${item._id}`, { method: "DELETE" })
-          )
-        );
-        isSuccess = results.every((r) => r.ok);
-      }
+      const itemIds = group.items.map((i) => String(i._id)).filter(Boolean);
+      const queryParams = new URLSearchParams();
+      if (itemIds.length > 0) queryParams.set("ids", itemIds.join(","));
+      if (group.orderId) queryParams.set("orderId", group.orderId);
+
+      const res = await fetch(`/api/admin/requests?${queryParams.toString()}`, {
+        method: "DELETE",
+      });
+      const isSuccess = res.ok;
 
       if (isSuccess) {
         showToast(group.items.length > 1 ? "Order deleted" : "Request deleted");
@@ -452,6 +458,7 @@ export default function AdminRequestsPage() {
     all: groups.length,
     pending: groups.filter((g) => g.status === "pending").length,
     contacted: groups.filter((g) => g.status === "contacted").length,
+    "in-progress": groups.filter((g) => g.status === "in-progress").length,
     fulfilled: groups.filter((g) => g.status === "fulfilled").length,
     cancelled: groups.filter((g) => g.status === "cancelled").length,
   };
@@ -488,6 +495,43 @@ export default function AdminRequestsPage() {
         />
       )}
 
+      {/* Image Preview Lightbox Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-md w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-2xl p-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--border)]">
+              <div className="min-w-0 pr-3">
+                <h3 className="font-bold text-sm text-[var(--foreground)] truncate">
+                  {previewImage.name}
+                </h3>
+                <p className="text-[11px] text-[var(--muted)]">Product Image</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewImage(null)}
+                className="p-1.5 rounded-xl bg-[var(--surface-2)] text-[var(--muted)] hover:text-[var(--foreground)] transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="aspect-square w-full rounded-xl overflow-hidden bg-black/20 border border-[var(--border)] flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
       {toastMsg && (
         <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border shadow-2xl text-sm font-semibold animate-in slide-in-from-bottom-4 duration-300 ${toastType === "success" ? "bg-emerald-50 border-emerald-300 text-emerald-700" : "bg-red-50 border-red-300 text-red-700"}`}>
@@ -512,8 +556,8 @@ export default function AdminRequestsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {(["pending", "contacted", "fulfilled", "cancelled"] as const).map((s) => {
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        {(["pending", "contacted", "in-progress", "fulfilled", "cancelled"] as const).map((s) => {
           const cfg = STATUS_CONFIG[s]; const Icon = cfg.icon;
           return (
             <button key={s} onClick={() => setStatusFilter(statusFilter === s ? "all" : s)} className={`p-4 rounded-2xl border text-left transition ${statusFilter === s ? "border-[#B81862]/60 bg-[#B81862]/10" : "bg-[var(--card)] border-[var(--border)] hover:border-[var(--muted)]"}`}>
@@ -536,7 +580,7 @@ export default function AdminRequestsPage() {
             {search && <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)] hover:text-[var(--foreground)] p-1"><X className="w-3.5 h-3.5" /></button>}
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            {(["all", "pending", "contacted", "fulfilled", "cancelled"] as const).map((s) => (
+            {(["all", "pending", "contacted", "in-progress", "fulfilled", "cancelled"] as const).map((s) => (
               <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition capitalize ${statusFilter === s ? "bg-[#B81862] text-white" : "bg-[var(--surface-2)] text-[var(--muted)] hover:text-[var(--foreground)] border border-[var(--border)]"}`}>
                 {s === "all" ? `All (${counts.all})` : `${STATUS_CONFIG[s].label} (${counts[s]})`}
               </button>
@@ -577,7 +621,7 @@ export default function AdminRequestsPage() {
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <ShoppingBag className="w-4 h-4 text-[#B81862] shrink-0" />
                     <span className="font-mono text-xs font-bold text-[var(--foreground)] bg-[var(--surface-2)] px-2.5 py-1 rounded-lg border border-[var(--border)] flex items-center gap-1.5 shadow-xs">
-                      <span className="text-[#B81862] font-semibold">Order #</span>
+                      <span className="text-[#B81862] font-semibold">Order ID #</span>
                       <span>{group.orderId}</span>
                     </span>
                     {isMultiItem && <span className="text-[11px] font-bold text-[#B81862] bg-[#B81862]/10 border border-[#B81862]/20 px-2 py-0.5 rounded-full">{group.items.length} items</span>}
@@ -616,15 +660,51 @@ export default function AdminRequestsPage() {
                       </p>
                       <div className="space-y-2">
                         {group.items.map((item, idx) => (
-                          <div key={item._id} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)]">
-                            <span className="text-[11px] font-mono text-[var(--muted)] w-5 text-center shrink-0">{idx + 1}.</span>
+                          <div
+                            key={item._id}
+                            className="flex items-center gap-3.5 p-3 rounded-xl bg-[var(--surface-2)] border border-[var(--border)] group/item hover:border-[#B81862]/30 transition"
+                          >
+                            <span className="text-[11px] font-mono text-[var(--muted)] w-4 text-center shrink-0">
+                              {idx + 1}.
+                            </span>
+
+                            {/* Product Image Thumbnail */}
+                            <div
+                              className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden bg-[var(--card)] border border-[var(--border)] shrink-0 shadow-xs relative flex items-center justify-center cursor-pointer group/thumb hover:ring-2 hover:ring-[#B81862]/40 transition"
+                              onClick={() =>
+                                item.productImage &&
+                                setPreviewImage({ url: item.productImage, name: item.productName })
+                              }
+                              title={item.productImage ? "Click to preview photo" : item.productName}
+                            >
+                              {item.productImage ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img
+                                  src={item.productImage}
+                                  alt={item.productName}
+                                  className="w-full h-full object-cover group-hover/thumb:scale-110 transition-transform duration-300"
+                                />
+                              ) : (
+                                <Package className="w-5 h-5 text-[var(--muted)]" />
+                              )}
+                            </div>
+
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-[var(--foreground)] truncate">{item.productName}</p>
-                              {item.productSku && <span className="flex items-center gap-1 font-mono text-[10px] text-[var(--muted)] mt-0.5"><Hash className="w-2.5 h-2.5" />{item.productSku}</span>}
+                              <p className="text-sm font-semibold text-[var(--foreground)] truncate">
+                                {item.productName}
+                              </p>
+                              {item.productSku && (
+                                <span className="inline-flex items-center gap-1 font-mono text-[10px] text-[var(--muted)] mt-0.5 bg-[var(--surface)] px-1.5 py-0.5 rounded border border-[var(--border)]">
+                                  <Hash className="w-2.5 h-2.5" />
+                                  Product ID: {item.productSku}
+                                </span>
+                              )}
                             </div>
                             <div className="text-right shrink-0">
                               <p className="text-sm font-bold text-[var(--foreground)]">x {item.quantity}</p>
-                              <p className="text-[10px] text-[var(--muted)]">{item.quantity === 1 ? "piece" : "pieces"}</p>
+                              <p className="text-[10px] text-[var(--muted)]">
+                                {item.quantity === 1 ? "piece" : "pieces"}
+                              </p>
                             </div>
                           </div>
                         ))}

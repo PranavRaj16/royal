@@ -26,11 +26,12 @@ import {
   Star,
   Percent,
   RotateCcw,
+  MapPin,
 } from "lucide-react";
 import { IProduct, ICategory } from "@/types";
 import { getProductPlaceholder, getCategoryPlaceholder } from "@/lib/placeholderImages";
 
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP || "919876543210";
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP || "919581335925";
 const VISITOR_KEY = "rj_visitor_info";
 const CART_KEY = "rj_cart_items";
 
@@ -51,7 +52,6 @@ export default function SimpleCataloguePage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStock, setSelectedStock] = useState<string>("all");
-  const [priceRange, setPriceRange] = useState<string>("all");
   const [onlyFeatured, setOnlyFeatured] = useState(false);
   const [onlyDiscounted, setOnlyDiscounted] = useState(false);
   const [sortBy, setSortBy] = useState<string>("featured");
@@ -147,7 +147,7 @@ export default function SimpleCataloguePage() {
     setCart(newCart);
     try {
       localStorage.setItem(CART_KEY, JSON.stringify(newCart));
-    } catch {}
+    } catch { }
   };
 
   // Re-fetch products from server to keep stock in sync
@@ -217,18 +217,16 @@ export default function SimpleCataloguePage() {
     if (search.trim()) count++;
     if (selectedCategory !== "all") count++;
     if (selectedStock !== "all") count++;
-    if (priceRange !== "all") count++;
     if (onlyFeatured) count++;
     if (onlyDiscounted) count++;
     if (sortBy !== "featured") count++;
     return count;
-  }, [search, selectedCategory, selectedStock, priceRange, onlyFeatured, onlyDiscounted, sortBy]);
+  }, [search, selectedCategory, selectedStock, onlyFeatured, onlyDiscounted, sortBy]);
 
   const resetAllFilters = () => {
     setSearch("");
     setSelectedCategory("all");
     setSelectedStock("all");
-    setPriceRange("all");
     setOnlyFeatured(false);
     setOnlyDiscounted(false);
     setSortBy("featured");
@@ -287,16 +285,10 @@ export default function SimpleCataloguePage() {
         if (selectedStock === "made_to_order" && p.stockStatus !== "made_to_order") return false;
       }
 
-      // 4. Price Range Filter
-      const effectivePrice = Number(p.discountPrice || p.price || 0);
-      if (priceRange === "under_1l" && effectivePrice >= 100000) return false;
-      if (priceRange === "1l_5l" && (effectivePrice < 100000 || effectivePrice > 500000)) return false;
-      if (priceRange === "above_5l" && effectivePrice <= 500000) return false;
-
-      // 5. Featured Only
+      // 4. Featured Only
       if (onlyFeatured && !p.isFeatured) return false;
 
-      // 6. Discounted / Offers Only
+      // 5. Discounted / Offers Only
       if (onlyDiscounted && (!p.discountPrice || p.discountPrice >= p.price)) return false;
 
       return true;
@@ -337,7 +329,6 @@ export default function SimpleCataloguePage() {
     selectedCategory,
     search,
     selectedStock,
-    priceRange,
     onlyFeatured,
     onlyDiscounted,
     sortBy,
@@ -518,6 +509,41 @@ export default function SimpleCataloguePage() {
     }
   };
 
+  // Helper to log WhatsApp enquiry and open chat
+  const triggerWhatsAppEnquiry = (product: IProduct, customNote?: string) => {
+    const visitor = visitorInfo;
+    const name = visitor?.name || "Store Customer";
+    const phone = visitor?.phone || "";
+
+    // Always log to backend as a WhatsApp Enquiry
+    fetch("/api/public/requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        productId: product._id,
+        productName: product.name,
+        productSku: product.sku,
+        productImage: getPrimaryImage(product),
+        visitorName: name,
+        visitorPhone: phone || "WhatsApp Direct Enquiry",
+        quantity: 1,
+        source: "whatsapp",
+        isWhatsAppEnquiry: true,
+        description: customNote || `Customer enquired about ${product.name} on WhatsApp`,
+      }),
+    }).catch(() => {});
+
+    const price = product.discountPrice || product.price;
+    let text = `Hello Dwara Collections, I would like to enquire about: *${product.name}* (Product ID: ${product.sku || "N/A"})${price ? ` priced at ${formatPrice(price)}` : ""}.`;
+    if (customNote) {
+      text += `\n\nNote: ${customNote}`;
+    }
+    if (visitor?.name) {
+      text += `\nCustomer: ${visitor.name}${visitor.phone ? ` (${visitor.phone})` : ""}`;
+    }
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
   // Submit single request
   const handleSubmitSingleRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -532,6 +558,7 @@ export default function SimpleCataloguePage() {
           productId: requestProduct._id,
           productName: requestProduct.name,
           productSku: requestProduct.sku,
+          productImage: getPrimaryImage(requestProduct),
           visitorName: visitorInfo.name,
           visitorPhone: visitorInfo.phone,
           quantity: requestQty,
@@ -545,23 +572,6 @@ export default function SimpleCataloguePage() {
       setLastSubmittedOrderId(data.orderId || data.request?.orderId || "");
       setRequestSuccess(true);
 
-      // Immediately decrement stock in client state without requiring page reload
-      const orderedProdId = requestProduct._id;
-      const orderedCount = requestQty;
-      setProducts((prev) =>
-        prev.map((p) => {
-          if (p._id === orderedProdId) {
-            const newQty = Math.max(0, (p.quantity ?? 10) - orderedCount);
-            return {
-              ...p,
-              quantity: newQty,
-              stockStatus: newQty <= 0 ? "out_of_stock" : p.stockStatus,
-            };
-          }
-          return p;
-        })
-      );
-
       // Re-fetch products from server to ensure perfect sync
       refreshProducts();
 
@@ -571,8 +581,8 @@ export default function SimpleCataloguePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: visitorInfo.name, phone: visitorInfo.phone }),
-        }).catch(() => {});
-      } catch {}
+        }).catch(() => { });
+      } catch { }
     } catch (err) {
       setRequestError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -597,6 +607,7 @@ export default function SimpleCataloguePage() {
         productId: it.product._id,
         productName: it.product.name,
         productSku: it.product.sku,
+        productImage: getPrimaryImage(it.product),
         quantity: it.quantity,
       }));
 
@@ -619,24 +630,6 @@ export default function SimpleCataloguePage() {
       setCartSuccessItems([...cartItemList]);
       setCartSuccess(true);
 
-      // Immediately decrement stock for all cart items in client state
-      const qtyMap: Record<string, number> = {};
-      cartItemList.forEach((it) => {
-        qtyMap[it.product._id] = (qtyMap[it.product._id] || 0) + it.quantity;
-      });
-      setProducts((prev) =>
-        prev.map((p) => {
-          const ordered = qtyMap[p._id];
-          if (!ordered) return p;
-          const newQty = Math.max(0, (p.quantity ?? 10) - ordered);
-          return {
-            ...p,
-            quantity: newQty,
-            stockStatus: newQty <= 0 ? "out_of_stock" : p.stockStatus,
-          };
-        })
-      );
-
       // Re-fetch products from server to ensure perfect sync
       refreshProducts();
 
@@ -648,8 +641,8 @@ export default function SimpleCataloguePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: visitorInfo.name, phone: visitorInfo.phone }),
-        }).catch(() => {});
-      } catch {}
+        }).catch(() => { });
+      } catch { }
     } catch (err) {
       setCartError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
@@ -667,7 +660,7 @@ export default function SimpleCataloguePage() {
     const itemsToFormat = cartItemList.length > 0 ? cartItemList : cartSuccessItems;
     itemsToFormat.forEach((item, index) => {
       const price = item.product.discountPrice || item.product.price;
-      message += `${index + 1}. *${item.product.name}*\n   SKU: ${item.product.sku || "N/A"} | Qty: ${item.quantity} | Price: ${formatPrice(price * item.quantity)}\n`;
+      message += `${index + 1}. *${item.product.name}*\n   Product ID: ${item.product.sku || "N/A"} | Qty: ${item.quantity} | Price: ${formatPrice(price * item.quantity)}\n`;
     });
     if (totalCartPrice > 0) {
       message += `\n*Total Estimated:* ${formatPrice(totalCartPrice)}`;
@@ -920,7 +913,7 @@ export default function SimpleCataloguePage() {
                                 {p.name}
                               </h4>
                               <p className="text-[10px] text-[#7A5E6A] font-mono mt-0.5">
-                                SKU: {p.sku || "N/A"}
+                                Product ID: {p.sku || "N/A"}
                               </p>
                               <div className="text-xs font-bold text-[#B81862] mt-0.5">
                                 {formatPrice(price)}
@@ -1145,19 +1138,19 @@ export default function SimpleCataloguePage() {
                     <ShoppingBag className="w-3.5 h-3.5" />
                     View My Orders
                   </Link>
-                  <a
-                    href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                      `Hello Dwara Collections, I submitted a request for ${requestProduct.name} (SKU: ${requestProduct.sku || "N/A"})${
-                        lastSubmittedOrderId ? ` with Order Reference ID: *${lastSubmittedOrderId}*` : ""
-                      }. Customer: ${visitorInfo.name} (${visitorInfo.phone}).`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#25D366] text-white font-bold text-xs shadow-md hover:bg-[#20ba59] transition flex items-center justify-center gap-1.5"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      triggerWhatsAppEnquiry(
+                        requestProduct,
+                        `I submitted a request for ${requestProduct.name} with Order Reference: ${lastSubmittedOrderId}`
+                      )
+                    }
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#25D366] text-white font-bold text-xs shadow-md hover:bg-[#20ba59] transition flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <MessageCircle className="w-4 h-4 fill-white" />
                     <span>Chat on WhatsApp</span>
-                  </a>
+                  </button>
                 </div>
               </div>
             ) : (
@@ -1170,7 +1163,7 @@ export default function SimpleCataloguePage() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-semibold text-[#111111] text-sm truncate">{requestProduct.name}</p>
-                    <p className="text-xs text-[#7A5E6A] font-mono">SKU: {requestProduct.sku || "N/A"}</p>
+                    <p className="text-xs text-[#7A5E6A] font-mono">Product ID: {requestProduct.sku || "N/A"}</p>
                   </div>
                 </div>
 
@@ -1274,7 +1267,7 @@ export default function SimpleCataloguePage() {
         {/* Top Gold Banner */}
         <div className="bg-[#181512] text-[#FFF8FB] py-1 px-3 text-[10px] sm:text-xs font-medium text-center tracking-wider sm:tracking-widest uppercase flex items-center justify-center gap-1.5 sm:gap-2 truncate">
           <Sparkles className="w-3 h-3 text-[#d43d8a] shrink-0" />
-          <span className="truncate">Handcrafted Luxury Fine Jewellery • Certified BIS Hallmarked</span>
+          <span className="truncate">Browse • Discover • Shine</span>
         </div>
 
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
@@ -1422,10 +1415,10 @@ export default function SimpleCataloguePage() {
             Curated Jewellery Collection
           </span>
           <h1 className="font-serif text-xl sm:text-3xl lg:text-4xl font-bold text-[#111111] tracking-tight">
-            Explore Our Catalogue
+            Welcome to Dwara Collections
           </h1>
           <p className="mt-1 sm:mt-1.5 text-xs sm:text-sm text-[#555047] max-w-xl mx-auto leading-relaxed">
-            Browse our handcrafted gold, natural solitaires, and heirloom bridal pieces. Each item is BIS hallmarked and certified.
+            Browse our jewellery collection and find your perfect piece.
           </p>
         </div>
 
@@ -1475,11 +1468,10 @@ export default function SimpleCataloguePage() {
                 className="flex flex-col items-center gap-1.5 sm:gap-2 group cursor-pointer shrink-0 transition-transform duration-200 hover:scale-105 focus:outline-none"
               >
                 <div
-                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-0.5 sm:p-1 transition-all duration-300 ${
-                    selectedCategory === "all"
-                      ? "ring-2 sm:ring-[2.5px] ring-[#B81862] ring-offset-2 ring-offset-[#FFF8FB] bg-gradient-to-tr from-[#B81862] to-[#e0398a] shadow-md"
-                      : "border-2 border-[#F0D6E8] group-hover:border-[#B81862]/60 shadow-xs"
-                  }`}
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-0.5 sm:p-1 transition-all duration-300 ${selectedCategory === "all"
+                    ? "ring-2 sm:ring-[2.5px] ring-[#B81862] ring-offset-2 ring-offset-[#FFF8FB] bg-gradient-to-tr from-[#B81862] to-[#e0398a] shadow-md"
+                    : "border-2 border-[#F0D6E8] group-hover:border-[#B81862]/60 shadow-xs"
+                    }`}
                 >
                   <div className="w-full h-full rounded-full overflow-hidden bg-[#FDF0F6] relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1495,11 +1487,10 @@ export default function SimpleCataloguePage() {
                 </div>
                 <div className="text-center w-[84px] sm:w-[96px] min-h-[34px] flex flex-col items-center">
                   <span
-                    className={`block text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 transition-colors ${
-                      selectedCategory === "all"
-                        ? "text-[#B81862] font-extrabold"
-                        : "text-[#332E29] group-hover:text-[#B81862]"
-                    }`}
+                    className={`block text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 transition-colors ${selectedCategory === "all"
+                      ? "text-[#B81862] font-extrabold"
+                      : "text-[#332E29] group-hover:text-[#B81862]"
+                      }`}
                   >
                     All Pieces
                   </span>
@@ -1545,11 +1536,10 @@ export default function SimpleCataloguePage() {
                     className="flex flex-col items-center gap-1.5 sm:gap-2 group cursor-pointer shrink-0 transition-transform duration-200 hover:scale-105 focus:outline-none"
                   >
                     <div
-                      className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-0.5 sm:p-1 transition-all duration-300 ${
-                        isSelected
-                          ? "ring-2 sm:ring-[2.5px] ring-[#B81862] ring-offset-2 ring-offset-[#FFF8FB] bg-gradient-to-tr from-[#B81862] to-[#e0398a] shadow-md"
-                          : "border-2 border-[#F0D6E8] group-hover:border-[#B81862]/60 shadow-xs"
-                      }`}
+                      className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full p-0.5 sm:p-1 transition-all duration-300 ${isSelected
+                        ? "ring-2 sm:ring-[2.5px] ring-[#B81862] ring-offset-2 ring-offset-[#FFF8FB] bg-gradient-to-tr from-[#B81862] to-[#e0398a] shadow-md"
+                        : "border-2 border-[#F0D6E8] group-hover:border-[#B81862]/60 shadow-xs"
+                        }`}
                     >
                       <div className="w-full h-full rounded-full overflow-hidden bg-[#FDF0F6] relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1565,11 +1555,10 @@ export default function SimpleCataloguePage() {
                     </div>
                     <div className="text-center w-[84px] sm:w-[96px] min-h-[34px] flex flex-col items-center">
                       <span
-                        className={`block text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 transition-colors ${
-                          isSelected
-                            ? "text-[#B81862] font-extrabold"
-                            : "text-[#332E29] group-hover:text-[#B81862]"
-                        }`}
+                        className={`block text-[11px] sm:text-xs font-bold leading-tight line-clamp-2 transition-colors ${isSelected
+                          ? "text-[#B81862] font-extrabold"
+                          : "text-[#332E29] group-hover:text-[#B81862]"
+                          }`}
                         title={cat.name}
                       >
                         {cat.name}
@@ -1600,11 +1589,10 @@ export default function SimpleCataloguePage() {
               <button
                 type="button"
                 onClick={() => setShowMobileFilterDrawer(true)}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 ${
-                  activeFilterCount > 0
-                    ? "bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white shadow-sm"
-                    : "bg-[#FFF8FB] text-[#B81862] border border-[#B81862]/30 hover:bg-[#FFF0F7]"
-                }`}
+                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 ${activeFilterCount > 0
+                  ? "bg-gradient-to-r from-[#B81862] to-[#d43d8a] text-white shadow-sm"
+                  : "bg-[#FFF8FB] text-[#B81862] border border-[#B81862]/30 hover:bg-[#FFF0F7]"
+                  }`}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" />
                 <span>Filters & Sort</span>
@@ -1621,11 +1609,10 @@ export default function SimpleCataloguePage() {
               <button
                 type="button"
                 onClick={() => setOnlyFeatured(!onlyFeatured)}
-                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
-                  onlyFeatured
-                    ? "bg-[#B81862] text-white shadow-xs"
-                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
-                }`}
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${onlyFeatured
+                  ? "bg-[#B81862] text-white shadow-xs"
+                  : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
+                  }`}
               >
                 <Star className={`w-3 h-3 ${onlyFeatured ? "fill-white text-white" : "text-[#B81862]"}`} />
                 <span>Featured</span>
@@ -1635,11 +1622,10 @@ export default function SimpleCataloguePage() {
               <button
                 type="button"
                 onClick={() => setOnlyDiscounted(!onlyDiscounted)}
-                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
-                  onlyDiscounted
-                    ? "bg-[#B81862] text-white shadow-xs"
-                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
-                }`}
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${onlyDiscounted
+                  ? "bg-[#B81862] text-white shadow-xs"
+                  : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
+                  }`}
               >
                 <Percent className={`w-3 h-3 ${onlyDiscounted ? "text-white" : "text-[#B81862]"}`} />
                 <span>Offers</span>
@@ -1649,28 +1635,16 @@ export default function SimpleCataloguePage() {
               <button
                 type="button"
                 onClick={() => setSelectedStock(selectedStock === "in_stock" ? "all" : "in_stock")}
-                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
-                  selectedStock === "in_stock"
-                    ? "bg-[#B81862] text-white shadow-xs"
-                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
-                }`}
+                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${selectedStock === "in_stock"
+                  ? "bg-[#B81862] text-white shadow-xs"
+                  : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
+                  }`}
               >
                 <Package className={`w-3 h-3 ${selectedStock === "in_stock" ? "text-white" : "text-[#B81862]"}`} />
                 <span>In Stock</span>
               </button>
 
-              {/* Quick Filter: Under 1L */}
-              <button
-                type="button"
-                onClick={() => setPriceRange(priceRange === "under_1l" ? "all" : "under_1l")}
-                className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-semibold transition cursor-pointer ${
-                  priceRange === "under_1l"
-                    ? "bg-[#B81862] text-white shadow-xs"
-                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047]"
-                }`}
-              >
-                <span>&lt; ₹1 Lakh</span>
-              </button>
+
 
               {/* Quick Reset Button if any filter is active */}
               {activeFilterCount > 0 && (
@@ -1712,7 +1686,7 @@ export default function SimpleCataloguePage() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search jewellery, SKU, gemstones, diamonds, gold..."
+                  placeholder="Search jewellery, Product ID, gemstones, diamonds, gold..."
                   className="w-full pl-9 pr-9 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs sm:text-sm text-[#111111] placeholder:text-[#998E84] focus:outline-none focus:border-[#B81862] focus:ring-1 focus:ring-[#B81862] transition"
                 />
                 {search && (
@@ -1756,18 +1730,7 @@ export default function SimpleCataloguePage() {
                   <option value="made_to_order">Made to Order</option>
                 </select>
 
-                {/* Price Range Dropdown */}
-                <select
-                  id="homepage-price-filter"
-                  value={priceRange}
-                  onChange={(e) => setPriceRange(e.target.value)}
-                  className="px-3 py-2.5 bg-[#FFF8FB] border border-[#F0D6E8] rounded-xl text-xs font-medium text-[#111111] focus:outline-none focus:border-[#B81862] transition cursor-pointer min-w-[130px]"
-                >
-                  <option value="all">All Prices</option>
-                  <option value="under_1l">Under ₹1,00,000</option>
-                  <option value="1l_5l">₹1L – ₹5 Lakh</option>
-                  <option value="above_5l">Above ₹5,00,000</option>
-                </select>
+
 
                 {/* Sort By Dropdown */}
                 <select
@@ -1795,11 +1758,10 @@ export default function SimpleCataloguePage() {
                 <button
                   type="button"
                   onClick={() => setOnlyFeatured(!onlyFeatured)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
-                    onlyFeatured
-                      ? "bg-[#B81862] text-white shadow-xs"
-                      : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${onlyFeatured
+                    ? "bg-[#B81862] text-white shadow-xs"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                    }`}
                 >
                   <Star className={`w-3.5 h-3.5 ${onlyFeatured ? "fill-white text-white" : "text-[#B81862]"}`} />
                   <span>Featured Pieces</span>
@@ -1808,11 +1770,10 @@ export default function SimpleCataloguePage() {
                 <button
                   type="button"
                   onClick={() => setOnlyDiscounted(!onlyDiscounted)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${
-                    onlyDiscounted
-                      ? "bg-[#B81862] text-white shadow-xs"
-                      : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
-                  }`}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer ${onlyDiscounted
+                    ? "bg-[#B81862] text-white shadow-xs"
+                    : "bg-[#FFF8FB] border border-[#F0D6E8] text-[#555047] hover:border-[#B81862]/40"
+                    }`}
                 >
                   <Percent className={`w-3.5 h-3.5 ${onlyDiscounted ? "text-white" : "text-[#B81862]"}`} />
                   <span>Special Offers</span>
@@ -1864,19 +1825,7 @@ export default function SimpleCataloguePage() {
                   </button>
                 </span>
               )}
-              {priceRange !== "all" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
-                  Price:{" "}
-                  {priceRange === "under_1l"
-                    ? "Under ₹1 Lakh"
-                    : priceRange === "1l_5l"
-                    ? "₹1L – ₹5L"
-                    : "Above ₹5 Lakh"}
-                  <button onClick={() => setPriceRange("all")} className="hover:text-black cursor-pointer">
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
+
               {onlyFeatured && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#FDE8F2] text-[#B81862] border border-[#F0D6E8]">
                   ★ Featured
@@ -1962,11 +1911,10 @@ export default function SimpleCataloguePage() {
                         key={opt.id}
                         type="button"
                         onClick={() => setSortBy(opt.id)}
-                        className={`p-2.5 rounded-xl text-xs font-medium text-left border transition flex items-center justify-between cursor-pointer ${
-                          sortBy === opt.id
-                            ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
-                            : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
-                        }`}
+                        className={`p-2.5 rounded-xl text-xs font-medium text-left border transition flex items-center justify-between cursor-pointer ${sortBy === opt.id
+                          ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
+                          : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
+                          }`}
                       >
                         <span>{opt.label}</span>
                         {sortBy === opt.id && <Check className="w-3.5 h-3.5 text-[#B81862]" />}
@@ -1984,11 +1932,10 @@ export default function SimpleCataloguePage() {
                     <button
                       type="button"
                       onClick={() => setSelectedCategory("all")}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer ${
-                        selectedCategory === "all"
-                          ? "bg-[#B81862] text-white border-[#B81862] font-bold shadow-xs"
-                          : "bg-[#FFF8FB] text-[#332E29] border-[#F0D6E8]"
-                      }`}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer ${selectedCategory === "all"
+                        ? "bg-[#B81862] text-white border-[#B81862] font-bold shadow-xs"
+                        : "bg-[#FFF8FB] text-[#332E29] border-[#F0D6E8]"
+                        }`}
                     >
                       All Collections ({products.length})
                     </button>
@@ -1999,11 +1946,10 @@ export default function SimpleCataloguePage() {
                           key={c._id}
                           type="button"
                           onClick={() => setSelectedCategory(c._id)}
-                          className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer ${
-                            isSelected
-                              ? "bg-[#B81862] text-white border-[#B81862] font-bold shadow-xs"
-                              : "bg-[#FFF8FB] text-[#332E29] border-[#F0D6E8]"
-                          }`}
+                          className={`px-3 py-2 rounded-xl text-xs font-medium border transition cursor-pointer ${isSelected
+                            ? "bg-[#B81862] text-white border-[#B81862] font-bold shadow-xs"
+                            : "bg-[#FFF8FB] text-[#332E29] border-[#F0D6E8]"
+                            }`}
                         >
                           {c.name}
                         </button>
@@ -2012,36 +1958,7 @@ export default function SimpleCataloguePage() {
                   </div>
                 </div>
 
-                {/* 3. Price Range */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-[#443E36] mb-2.5">
-                    Price Range
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: "all", label: "All Prices" },
-                      { id: "under_1l", label: "Under ₹1,00,000" },
-                      { id: "1l_5l", label: "₹1L – ₹5 Lakh" },
-                      { id: "above_5l", label: "Above ₹5,00,000" },
-                    ].map((opt) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setPriceRange(opt.id)}
-                        className={`p-2.5 rounded-xl text-xs font-medium text-left border transition flex items-center justify-between cursor-pointer ${
-                          priceRange === opt.id
-                            ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
-                            : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
-                        }`}
-                      >
-                        <span>{opt.label}</span>
-                        {priceRange === opt.id && <Check className="w-3.5 h-3.5 text-[#B81862]" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 4. Stock Status */}
+                {/* 3. Stock Status */}
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#443E36] mb-2.5">
                     Availability
@@ -2056,11 +1973,10 @@ export default function SimpleCataloguePage() {
                         key={opt.id}
                         type="button"
                         onClick={() => setSelectedStock(opt.id)}
-                        className={`p-2 rounded-xl text-xs font-medium text-center border transition cursor-pointer ${
-                          selectedStock === opt.id
-                            ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
-                            : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
-                        }`}
+                        className={`p-2 rounded-xl text-xs font-medium text-center border transition cursor-pointer ${selectedStock === opt.id
+                          ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862] font-bold"
+                          : "bg-[#FFF8FB] border-[#F0D6E8] text-[#332E29]"
+                          }`}
                       >
                         {opt.label}
                       </button>
@@ -2077,11 +1993,10 @@ export default function SimpleCataloguePage() {
                     <button
                       type="button"
                       onClick={() => setOnlyFeatured(!onlyFeatured)}
-                      className={`p-2.5 rounded-xl text-xs font-semibold border transition flex items-center justify-between cursor-pointer ${
-                        onlyFeatured
-                          ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862]"
-                          : "bg-[#FFF8FB] border-[#F0D6E8] text-[#555047]"
-                      }`}
+                      className={`p-2.5 rounded-xl text-xs font-semibold border transition flex items-center justify-between cursor-pointer ${onlyFeatured
+                        ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862]"
+                        : "bg-[#FFF8FB] border-[#F0D6E8] text-[#555047]"
+                        }`}
                     >
                       <span className="flex items-center gap-1.5">
                         <Star className={`w-3.5 h-3.5 ${onlyFeatured ? "fill-[#B81862] text-[#B81862]" : "text-gray-400"}`} />
@@ -2093,11 +2008,10 @@ export default function SimpleCataloguePage() {
                     <button
                       type="button"
                       onClick={() => setOnlyDiscounted(!onlyDiscounted)}
-                      className={`p-2.5 rounded-xl text-xs font-semibold border transition flex items-center justify-between cursor-pointer ${
-                        onlyDiscounted
-                          ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862]"
-                          : "bg-[#FFF8FB] border-[#F0D6E8] text-[#555047]"
-                      }`}
+                      className={`p-2.5 rounded-xl text-xs font-semibold border transition flex items-center justify-between cursor-pointer ${onlyDiscounted
+                        ? "bg-[#FFF0F7] border-[#B81862] text-[#B81862]"
+                        : "bg-[#FFF8FB] border-[#F0D6E8] text-[#555047]"
+                        }`}
                     >
                       <span className="flex items-center gap-1.5">
                         <Percent className={`w-3.5 h-3.5 ${onlyDiscounted ? "text-[#B81862]" : "text-gray-400"}`} />
@@ -2251,9 +2165,9 @@ export default function SimpleCataloguePage() {
                         )}
                       </div>
 
-                      {/* Quantity & SKU */}
+                      {/* Quantity & Product ID */}
                       <div className="mt-1 flex items-center justify-between text-[11px] sm:text-xs text-[#7A5E6A]">
-                        <span className="font-mono text-[10px] sm:text-[11px] truncate max-w-[130px]">SKU: {product.sku || "N/A"}</span>
+                        <span className="font-mono text-[10px] sm:text-[11px] truncate max-w-[130px]">Product ID: {product.sku || "N/A"}</span>
                         {product.showQuantity !== false ? (
                           <span className="shrink-0">{stockQty} in stock</span>
                         ) : (
@@ -2303,13 +2217,12 @@ export default function SimpleCataloguePage() {
                         <button
                           type="button"
                           onClick={(e) => handleAddToCart(product, e)}
-                          className={`flex-1 py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${
-                            wasJustAdded
-                              ? "bg-emerald-600 text-white shadow-md scale-98"
-                              : inCartQty > 0
+                          className={`flex-1 py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs ${wasJustAdded
+                            ? "bg-emerald-600 text-white shadow-md scale-98"
+                            : inCartQty > 0
                               ? "bg-[#B81862] text-white hover:opacity-90"
                               : "bg-[#B81862]/10 hover:bg-[#B81862]/20 text-[#B81862] border border-[#B81862]/30"
-                          }`}
+                            }`}
                         >
                           {wasJustAdded ? (
                             <>
@@ -2337,18 +2250,17 @@ export default function SimpleCataloguePage() {
                         </button>
 
                         {/* WhatsApp Direct Enquiry */}
-                        <a
-                          href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                            `Hello Dwara Collections, I would like to enquire about: ${product.name} (SKU: ${product.sku || "N/A"}) priced at ${formatPrice(product.discountPrice || product.price)}.`
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="py-1.5 px-1.5 sm:px-2 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-[#F5F1EB] hover:bg-[#25D366]/20 text-[#332E29] hover:text-[#1b9e4b] border border-[#F0D6E8] hover:border-[#25D366]/40 transition flex items-center justify-center gap-1 text-center truncate"
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerWhatsAppEnquiry(product);
+                          }}
+                          className="py-1.5 px-1.5 sm:px-2 rounded-xl text-[10px] sm:text-[11px] font-semibold bg-[#F5F1EB] hover:bg-[#25D366]/20 text-[#332E29] hover:text-[#1b9e4b] border border-[#F0D6E8] hover:border-[#25D366]/40 transition flex items-center justify-center gap-1 text-center truncate cursor-pointer"
                         >
                           <MessageCircle className="w-3 h-3 text-emerald-600 shrink-0" />
                           <span>WhatsApp</span>
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2469,11 +2381,10 @@ export default function SimpleCataloguePage() {
                           e.stopPropagation();
                           setProductModalImageIndex(idx);
                         }}
-                        className={`h-2 rounded-full transition-all cursor-pointer ${
-                          currentActiveIdx === idx
-                            ? "bg-[#B81862] w-4"
-                            : "bg-white/70 hover:bg-white w-2"
-                        }`}
+                        className={`h-2 rounded-full transition-all cursor-pointer ${currentActiveIdx === idx
+                          ? "bg-[#B81862] w-4"
+                          : "bg-white/70 hover:bg-white w-2"
+                          }`}
                         aria-label={`View photo ${idx + 1}`}
                       />
                     ))}
@@ -2501,7 +2412,7 @@ export default function SimpleCataloguePage() {
               {/* Content Column */}
               <div className="p-4 sm:p-6 md:p-7 flex-1 flex flex-col justify-between overflow-y-auto space-y-3.5 sm:space-y-4">
                 <div className="space-y-2.5 sm:space-y-3.5">
-                  {/* Category & SKU */}
+                  {/* Category & Product ID */}
                   <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862]">
                       {(typeof selectedProduct.categoryId === "object" && selectedProduct.categoryId !== null
@@ -2511,7 +2422,7 @@ export default function SimpleCataloguePage() {
                         "Fine Jewellery"}
                     </span>
                     <span className="font-mono text-[10px] sm:text-[11px] text-[#7A5E6A] bg-[#FFF8FB] px-2 py-0.5 rounded border border-[#F0D6E8]">
-                      SKU: {selectedProduct.sku}
+                      Product ID: {selectedProduct.sku}
                     </span>
                   </div>
 
@@ -2527,11 +2438,10 @@ export default function SimpleCataloguePage() {
                           key={idx}
                           type="button"
                           onClick={() => setProductModalImageIndex(idx)}
-                          className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition cursor-pointer shrink-0 bg-[#FFF8FB] ${
-                            currentActiveIdx === idx
-                              ? "border-[#B81862] ring-2 ring-[#B81862]/30 scale-105"
-                              : "border-[#F0D6E8] opacity-60 hover:opacity-100"
-                          }`}
+                          className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition cursor-pointer shrink-0 bg-[#FFF8FB] ${currentActiveIdx === idx
+                            ? "border-[#B81862] ring-2 ring-[#B81862]/30 scale-105"
+                            : "border-[#F0D6E8] opacity-60 hover:opacity-100"
+                            }`}
                           title={`View photo ${idx + 1}`}
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2558,15 +2468,23 @@ export default function SimpleCataloguePage() {
                   </div>
 
                   {/* Stock Info */}
-                  <div className="p-2.5 sm:p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs">
-                    <span className="text-[#7A5E6A] font-medium">Stock Status:</span>
-                    <span className="font-bold text-emerald-700">
-                      {selectedProduct.showQuantity === false
-                        ? "In Stock"
-                        : selectedProduct.quantity
-                        ? `${selectedProduct.quantity} units available`
-                        : "In Stock"}
-                    </span>
+                  <div className="p-2.5 sm:p-3 bg-[#FFF8FB] rounded-xl border border-[#F0D6E8] flex items-center justify-between text-xs gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[#7A5E6A] font-medium">Stock:</span>
+                      <span className="font-bold text-emerald-700">
+                        {selectedProduct.showQuantity === false
+                          ? "In Stock"
+                          : selectedProduct.quantity
+                            ? `${selectedProduct.quantity} units available`
+                            : "In Stock"}
+                      </span>
+                    </div>
+                    {selectedProduct.location && (
+                      <div className="flex items-center gap-1 text-[#B81862] font-semibold text-[11px] bg-white px-2 py-0.5 rounded-lg border border-[#F0D6E8]">
+                        <MapPin className="w-3 h-3 text-[#B81862] shrink-0" />
+                        <span>{selectedProduct.location}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Description */}
@@ -2593,17 +2511,14 @@ export default function SimpleCataloguePage() {
                       <span>Add to Cart &amp; Request</span>
                     </button>
 
-                    <a
-                      href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                        `Hello Dwara Collections, I am interested in: ${selectedProduct.name} (SKU: ${selectedProduct.sku || "N/A"}).`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-2.5 sm:p-3 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition flex items-center justify-center shadow-md shrink-0"
+                    <button
+                      type="button"
+                      onClick={() => triggerWhatsAppEnquiry(selectedProduct)}
+                      className="p-2.5 sm:p-3 rounded-xl bg-[#25D366] text-white hover:bg-[#20ba59] transition flex items-center justify-center shadow-md shrink-0 cursor-pointer"
                       title="Enquire on WhatsApp"
                     >
                       <MessageCircle className="w-4 h-4 fill-white" />
-                    </a>
+                    </button>
                   </div>
                 </div>
               </div>

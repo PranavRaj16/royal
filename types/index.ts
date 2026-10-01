@@ -112,6 +112,7 @@ export interface IProduct {
   showQuantity?: boolean;
   quantity?: number;
   stockStatus: StockStatus;
+  location?: string;
   images: IProductImage[];
   specifications: IProductSpecification[];
   tags: string[];
@@ -139,11 +140,13 @@ export interface IItemRequest {
   productId?: string;
   productName: string;
   productSku?: string;
+  productImage?: string;
   visitorName: string;
   visitorPhone: string;
   quantity: number;
   description?: string;
-  status: "pending" | "contacted" | "fulfilled" | "cancelled";
+  status: "pending" | "contacted" | "in-progress" | "fulfilled" | "cancelled";
+  isQuantityDeducted?: boolean;
   createdAt: string | Date;
   updatedAt: string | Date;
 }

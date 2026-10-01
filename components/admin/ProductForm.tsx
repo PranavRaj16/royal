@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   RefreshCw,
   Tag,
+  MapPin,
 } from "lucide-react";
 import { IProduct, ICategory, IProductImage } from "@/types";
 
@@ -87,13 +88,14 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
   const [slug, setSlug] = useState(initialProduct?.slug || "");
   const [sku, setSku] = useState(initialProduct?.sku || "");
   const [skuManuallyEdited, setSkuManuallyEdited] = useState(Boolean(initialProduct?.sku));
+  const [location, setLocation] = useState(initialProduct?.location || "");
 
   const initialCatId =
     (typeof initialProduct?.categoryId === "object" && initialProduct?.categoryId !== null
       ? (initialProduct.categoryId as { _id?: string })?._id || ""
       : typeof initialProduct?.categoryId === "string"
-      ? initialProduct.categoryId
-      : "") || queryCatId;
+        ? initialProduct.categoryId
+        : "") || queryCatId;
   const [categoryId, setCategoryId] = useState(initialCatId);
   const [description, setDescription] = useState(initialProduct?.description || initialProduct?.shortDescription || "");
 
@@ -330,7 +332,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
     }
 
     if (!sku.trim()) {
-      errors.sku = "Product ID / SKU is required (e.g. DW-N-01).";
+      errors.sku = "Product ID is required (e.g. DW-N-01).";
     }
 
     if (price === "" || price === undefined || price === null) {
@@ -397,6 +399,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
       name: name.trim(),
       slug: slug.trim() || name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-"),
       sku: sku.trim().toUpperCase(),
+      location: location.trim(),
       categoryId: cleanCategoryId,
       shortDescription: description.trim().slice(0, 150),
       description: description.trim(),
@@ -446,11 +449,10 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
 
   const getInputClass = (fieldName?: string) => {
     const hasError = fieldName && fieldErrors[fieldName];
-    return `w-full px-3.5 py-2.5 bg-[var(--background)] border ${
-      hasError
-        ? "border-red-500/80 ring-2 ring-red-500/20 focus:border-red-500"
-        : "border-[var(--border)] focus:border-[#B81862] focus:ring-2 focus:ring-[#B81862]/20"
-    } rounded-xl text-sm text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none transition`;
+    return `w-full px-3.5 py-2.5 bg-[var(--background)] border ${hasError
+      ? "border-red-500/80 ring-2 ring-red-500/20 focus:border-red-500"
+      : "border-[var(--border)] focus:border-[#B81862] focus:ring-2 focus:ring-[#B81862]/20"
+      } rounded-xl text-sm text-[var(--foreground)] placeholder-[var(--muted)] focus:outline-none transition`;
   };
 
   const labelClass = "block text-xs font-bold uppercase tracking-wider text-[var(--muted)] mb-1.5";
@@ -546,11 +548,10 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
               Upload up to 3 photos for this jewellery piece. Click ★ to select the cover photo.
             </p>
           </div>
-          <span className={`text-xs font-mono font-semibold px-2.5 py-1 rounded-lg ${
-            images.length >= MAX_IMAGES
-              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-              : "bg-[var(--surface-2)] text-[var(--muted)]"
-          }`}>
+          <span className={`text-xs font-mono font-semibold px-2.5 py-1 rounded-lg ${images.length >= MAX_IMAGES
+            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+            : "bg-[var(--surface-2)] text-[var(--muted)]"
+            }`}>
             {images.length} / {MAX_IMAGES} uploaded {images.length >= MAX_IMAGES && "(Limit Reached)"}
           </span>
         </div>
@@ -566,18 +567,16 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
           {images.map((img, idx) => (
             <div
               key={idx}
-              className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition group ${
-                img.isPrimary ? "border-[#B81862] ring-2 ring-[#B81862]/30" : "border-[var(--border)]"
-              }`}
+              className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition group ${img.isPrimary ? "border-[#B81862] ring-2 ring-[#B81862]/30" : "border-[var(--border)]"
+                }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={img.url} alt={img.alt || `Photo ${idx + 1}`} className="w-full h-full object-cover" />
               <button
                 type="button"
                 onClick={() => setPrimaryImage(idx)}
-                className={`absolute top-2 left-2 p-1.5 rounded-lg backdrop-blur-md transition cursor-pointer ${
-                  img.isPrimary ? "bg-[#B81862] text-white font-bold shadow-md" : "bg-black/60 text-white hover:bg-black"
-                }`}
+                className={`absolute top-2 left-2 p-1.5 rounded-lg backdrop-blur-md transition cursor-pointer ${img.isPrimary ? "bg-[#B81862] text-white font-bold shadow-md" : "bg-black/60 text-white hover:bg-black"
+                  }`}
                 title={img.isPrimary ? "Primary cover photo" : "Set as cover photo"}
               >
                 <Star className={`w-3.5 h-3.5 ${img.isPrimary ? "fill-white" : ""}`} />
@@ -676,7 +675,7 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
           Product Information
         </h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Product Name */}
           <div className="sm:col-span-1">
             <label className={labelClass}>Product Name *</label>
@@ -727,11 +726,11 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
             )}
           </div>
 
-          {/* Product ID / SKU in DW-(Category letter)-01 format */}
+          {/* Product ID in DW-(Category letter)-01 format */}
           <div className="sm:col-span-1">
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted)]">
-                Product ID (SKU) *
+                Product ID *
               </label>
               <button
                 type="button"
@@ -765,13 +764,40 @@ export default function ProductForm({ initialProduct, isEditMode = false }: Prod
                 <RefreshCw className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className="text-[10px] text-[var(--muted)] mt-1">
-              Format: <span className="font-mono font-semibold text-[#B81862]">DW-(Category Letter)-01</span> (Editable)
-            </p>
             {fieldErrors.sku && (
               <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {fieldErrors.sku}
+              </p>
+            )}
+          </div>
+
+          {/* Location / Physical Placement (Text Field) */}
+          <div className="sm:col-span-1">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-[var(--muted)] flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-[#B81862]" />
+                Location
+              </label>
+            </div>
+            <input
+              id="product-location"
+              type="text"
+              value={location}
+              onChange={(e) => {
+                setLocation(e.target.value);
+                clearFieldError("location");
+              }}
+              placeholder="Add Location"
+              className={getInputClass("location")}
+            />
+            <p className="text-[10px] text-[var(--muted)] mt-1">
+              Store, shelf, counter or vault location
+            </p>
+            {fieldErrors.location && (
+              <p className="text-[11px] text-red-400 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {fieldErrors.location}
               </p>
             )}
           </div>

@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status") || "";
+    const source = searchParams.get("source") || searchParams.get("type") || "";
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "50", 10);
     const skip = (page - 1) * limit;
@@ -22,10 +23,26 @@ export async function GET(request: NextRequest) {
     try {
       await connectToDatabase();
 
-      const query: Record<string, unknown> = {};
+      const andConditions: any[] = [];
 
       if (status && status !== "all") {
-        query.status = status;
+        andConditions.push({ status });
+      }
+
+      if (source === "whatsapp") {
+        andConditions.push({
+          $or: [
+            { source: "whatsapp" },
+            { isWhatsAppEnquiry: true },
+          ],
+        });
+      } else if (source === "orders") {
+        andConditions.push({
+          $and: [
+            { source: { $ne: "whatsapp" } },
+            { isWhatsAppEnquiry: { $ne: true } },
+          ],
+        });
       }
 
       // If businessId filter is needed, find current business or match session business / unassigned
@@ -40,18 +57,31 @@ export async function GET(request: NextRequest) {
       }
 
       if (matchedIds.length > 0) {
-        query.$or = [
-          { businessId: { $in: matchedIds } },
-          { businessId: null },
-          { businessId: { $exists: false } },
-        ];
+        andConditions.push({
+          $or: [
+            { businessId: { $in: matchedIds } },
+            { businessId: null },
+            { businessId: { $exists: false } },
+          ],
+        });
       }
 
+      const query: Record<string, unknown> = andConditions.length > 0 ? { $and: andConditions } : {};
+
       // Query for total matching filter and pending count
-      const pendingQuery: Record<string, unknown> = { ...query, status: "pending" };
+      const pendingAnd = [...andConditions, { status: "pending" }];
+      const pendingQuery: Record<string, unknown> = { $and: pendingAnd };
+
+      const { Product } = await import("@/models/Product");
+      const { getProductPlaceholder } = await import("@/lib/placeholderImages");
 
       const [rawRequests, orderGroups, pendingGroups] = await Promise.all([
-        ItemRequest.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+        ItemRequest.find(query)
+          .populate("productId", "name images price sku")
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
         ItemRequest.aggregate([
           { $match: query },
           {
@@ -84,14 +114,59 @@ export async function GET(request: NextRequest) {
         ]),
       ]);
 
+      // Collect any missing product SKUs / names to lookup in batch
+      const missingSkuOrNames: string[] = [];
+      rawRequests.forEach((r: any) => {
+        const pDoc = r.productId as any;
+        const hasImg = r.productImage || (pDoc && typeof pDoc === "object" && pDoc.images?.[0]?.url);
+        if (!hasImg) {
+          if (r.productSku) missingSkuOrNames.push(r.productSku.toUpperCase());
+          if (r.productName) missingSkuOrNames.push(r.productName.toLowerCase());
+        }
+      });
+
+      let productLookupMap = new Map<string, string>();
+      if (missingSkuOrNames.length > 0) {
+        try {
+          const matchedProds = await Product.find({
+            $or: [
+              { sku: { $in: missingSkuOrNames } },
+              { name: { $in: missingSkuOrNames.map((n) => new RegExp(`^${n}$`, "i")) } },
+            ],
+          })
+            .select("sku name images")
+            .lean();
+
+          matchedProds.forEach((p: any) => {
+            const firstImg = p.images?.find((i: any) => i.isPrimary)?.url || p.images?.[0]?.url;
+            if (firstImg) {
+              if (p.sku) productLookupMap.set(p.sku.toUpperCase(), firstImg);
+              if (p.name) productLookupMap.set(p.name.toLowerCase(), firstImg);
+            }
+          });
+        } catch (lookupErr) {
+          console.warn("Product lookup error:", lookupErr);
+        }
+      }
+
       const total = orderGroups[0]?.totalOrders || 0;
       const pendingCount = pendingGroups[0]?.totalPending || 0;
 
-      const requests = rawRequests.map((r: any) => ({
-        ...r,
-        _id: String(r._id),
-        orderId: r.orderId || `DW-ORD-${String(r._id).slice(-6).toUpperCase()}`,
-      }));
+      const requests = rawRequests.map((r: any) => {
+        const pDoc = r.productId as any;
+        const pDocImg = pDoc && typeof pDoc === "object" ? (pDoc.images?.find((i: any) => i.isPrimary)?.url || pDoc.images?.[0]?.url) : "";
+        const skuLookup = r.productSku ? productLookupMap.get(r.productSku.toUpperCase()) : "";
+        const nameLookup = r.productName ? productLookupMap.get(r.productName.toLowerCase()) : "";
+        const resolvedImage = r.productImage || pDocImg || skuLookup || nameLookup || getProductPlaceholder(undefined, r.productName);
+
+        return {
+          ...r,
+          _id: String(r._id),
+          productId: pDoc && typeof pDoc === "object" ? String(pDoc._id) : (r.productId ? String(r.productId) : undefined),
+          productImage: resolvedImage,
+          orderId: r.orderId || `DW-ORD-${String(r._id).slice(-6).toUpperCase()}`,
+        };
+      });
 
       return NextResponse.json(
         { success: true, requests, total, pendingCount },
@@ -103,11 +178,31 @@ export async function GET(request: NextRequest) {
       );
     } catch (dbErr) {
       console.warn("GET /api/admin/requests DB error, serving demo fallback:", dbErr);
-      const { DEMO_REQUESTS } = await import("@/lib/demoData");
-      let list = DEMO_REQUESTS.map((r) => ({
-        ...r,
-        orderId: r.orderId || `DW-ORD-${r._id.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
-      }));
+      const { DEMO_REQUESTS, DEMO_PRODUCTS } = await import("@/lib/demoData");
+      const { getProductPlaceholder } = await import("@/lib/placeholderImages");
+
+      let list = DEMO_REQUESTS.map((r) => {
+        const matchedDemo = DEMO_PRODUCTS.find(
+          (p) =>
+            (r.productId && (p._id === r.productId || p.slug === r.productId)) ||
+            (r.productSku && p.sku && p.sku.toUpperCase() === r.productSku.toUpperCase()) ||
+            (r.productName && p.name && p.name.toLowerCase() === r.productName.toLowerCase())
+        );
+        const demoImg = matchedDemo?.images?.find((i) => i.isPrimary)?.url || matchedDemo?.images?.[0]?.url;
+        const resolvedImg = r.productImage || demoImg || getProductPlaceholder(undefined, r.productName);
+
+        return {
+          ...r,
+          productImage: resolvedImg,
+          orderId: r.orderId || `DW-ORD-${r._id.replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+        };
+      });
+
+      if (source === "whatsapp") {
+        list = list.filter((r) => r.source === "whatsapp" || r.isWhatsAppEnquiry === true);
+      } else if (source === "orders") {
+        list = list.filter((r) => r.source !== "whatsapp" && r.isWhatsAppEnquiry !== true);
+      }
 
       const pendingList = list.filter((r) => r.status === "pending");
       const pendingSeen = new Set<string>();
@@ -152,23 +247,52 @@ export async function DELETE(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const orderId = searchParams.get("orderId");
     const id = searchParams.get("id");
+    const idsParam = searchParams.get("ids");
 
-    if (!orderId && !id) {
+    let bodyIds: string[] = [];
+    try {
+      const body = await request.json();
+      if (Array.isArray(body.ids)) bodyIds = body.ids;
+      else if (body.id) bodyIds = [body.id];
+    } catch {
+      // ignore empty body
+    }
+
+    const allIds = [
+      ...(idsParam ? idsParam.split(",").map((s) => s.trim()) : []),
+      ...(id ? [id.trim()] : []),
+      ...bodyIds,
+    ].filter(Boolean);
+
+    if (!orderId && allIds.length === 0) {
       return NextResponse.json({ error: "Missing orderId or id parameter" }, { status: 400 });
     }
 
     try {
       await connectToDatabase();
+
+      const orConditions: Record<string, unknown>[] = [];
       if (orderId) {
-        await ItemRequest.deleteMany({ orderId });
-      } else if (id && mongoose.Types.ObjectId.isValid(id)) {
-        await ItemRequest.findByIdAndDelete(id);
+        orConditions.push({ orderId });
       }
+
+      const validObjectIds = allIds
+        .filter((i) => mongoose.Types.ObjectId.isValid(i))
+        .map((i) => new mongoose.Types.ObjectId(i));
+
+      if (validObjectIds.length > 0) {
+        orConditions.push({ _id: { $in: validObjectIds } });
+      }
+
+      if (orConditions.length > 0) {
+        await ItemRequest.deleteMany({ $or: orConditions });
+      }
+
       return NextResponse.json({ success: true });
     } catch (dbErr) {
       console.warn("DELETE /api/admin/requests DB error, fallback:", dbErr);
       const { deleteDemoRequest } = await import("@/lib/demoData");
-      if (id) deleteDemoRequest(id);
+      allIds.forEach((i) => deleteDemoRequest(i));
       return NextResponse.json({ success: true, isFallback: true });
     }
   } catch (err) {

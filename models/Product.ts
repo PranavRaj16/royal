@@ -26,6 +26,7 @@ export interface IProductDocument extends mongoose.Document {
   showQuantity?: boolean;
   quantity: number;
   stockStatus: "in_stock" | "out_of_stock" | "made_to_order";
+  location?: string;
   images: IProductImageDoc[];
   specifications: IProductSpecificationDoc[];
   tags: string[];
@@ -60,6 +61,7 @@ const ProductSchema = new Schema<IProductDocument>(
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, trim: true, lowercase: true },
     sku: { type: String, required: true, trim: true },
+    location: { type: String, default: "", trim: true },
     shortDescription: { type: String, default: "" },
     description: { type: String, default: "" },
     price: { type: Number, required: true, min: 0 },
@@ -85,7 +87,12 @@ ProductSchema.index({ businessId: 1, slug: 1 }, { unique: true });
 ProductSchema.index({ businessId: 1, sku: 1 });
 ProductSchema.index({ businessId: 1, isPublished: 1, isFeatured: 1 });
 
+if (mongoose.models && mongoose.models.Product) {
+  delete (mongoose.models as Record<string, unknown>).Product;
+}
+
 export const Product: Model<IProductDocument> =
   mongoose.models.Product || mongoose.model<IProductDocument>("Product", ProductSchema);
 
 export default Product;
+

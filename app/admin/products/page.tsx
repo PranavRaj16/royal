@@ -24,6 +24,7 @@ import {
   AlertCircle,
   Upload,
   ImageIcon,
+  MapPin,
 } from "lucide-react";
 import { IProduct, ICategory } from "@/types";
 import { getCategoryPlaceholder, getProductPlaceholder } from "@/lib/placeholderImages";
@@ -1114,7 +1115,7 @@ function ProductsContent() {
                   <thead>
                     <tr className="bg-[var(--surface-2)]/80 border-b border-[var(--border)] text-[11px] font-bold uppercase tracking-wider text-[var(--muted)]">
                       <th className="py-3.5 px-5 w-[34%]">Product</th>
-                      <th className="py-3.5 px-4 w-[14%]">SKU</th>
+                      <th className="py-3.5 px-4 w-[14%]">Product ID</th>
                       <th className="py-3.5 px-4 w-[16%]">Price</th>
                       <th className="py-3.5 px-4 w-[14%]">Stock</th>
                       <th className="py-3.5 px-4 w-[10%]">Status</th>
@@ -1170,9 +1171,17 @@ function ProductsContent() {
                             </div>
                           </td>
                           <td className="py-4 px-4 whitespace-nowrap">
-                            <span className="font-mono text-xs text-[var(--muted)] bg-[var(--surface-2)] px-2.5 py-1 rounded-lg border border-[var(--border)]">
-                              {p.sku}
-                            </span>
+                            <div className="flex flex-col gap-1">
+                              <span className="font-mono text-xs text-[var(--muted)] bg-[var(--surface-2)] px-2.5 py-1 rounded-lg border border-[var(--border)] inline-block w-fit">
+                                {p.sku}
+                              </span>
+                              {p.location && (
+                                <span className="inline-flex items-center gap-1 text-[11px] text-[#B81862] dark:text-[#d43d8a] font-medium truncate max-w-[140px]" title={`Location: ${p.location}`}>
+                                  <MapPin className="w-3 h-3 shrink-0" />
+                                  <span>{p.location}</span>
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-4 px-4 whitespace-nowrap">
                             <div className="flex flex-col">
@@ -1376,6 +1385,12 @@ function ProductsContent() {
                             Qty: <strong className="font-bold">{p.quantity ?? 0}</strong>
                           </span>
                         </div>
+                        {p.location && (
+                          <div className="flex items-center gap-1 text-[10px] text-[#B81862] dark:text-[#d43d8a] font-medium mt-1 truncate" title={`Location: ${p.location}`}>
+                            <MapPin className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{p.location}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">

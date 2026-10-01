@@ -191,7 +191,7 @@ export default function PublicProductShowcase({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search jewellery, SKU, diamond..."
+                placeholder="Search jewellery, Product ID, diamond..."
                 className="w-full pl-10 pr-4 py-2.5 text-xs bg-[#FFF8FB] dark:bg-[#1a1a1a] text-[#141414] dark:text-[#f5f5f5] border border-[#E8E2D9] dark:border-[#333] rounded-full focus:outline-none focus:ring-2 focus:ring-[#B81862]"
               />
               {search && (
