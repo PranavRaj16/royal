@@ -94,6 +94,13 @@ export async function POST(request: NextRequest) {
   // Check if this is a multi-item batch request (Cart)
   const isBatch = Array.isArray(items) && items.length > 0;
 
+  const reqSource = (
+    body.source === "whatsapp" || body.isWhatsAppEnquiry
+      ? "whatsapp"
+      : (body.source as "whatsapp" | "order" | "quick-request" | "cart") || (isBatch ? "cart" : "quick-request")
+  ) as "whatsapp" | "order" | "quick-request" | "cart";
+  const isWhatsApp = reqSource === "whatsapp";
+
   if (!isBatch && !productName) {
     return NextResponse.json(
       { success: false, error: "Product name is required for single item request." },
@@ -160,9 +167,6 @@ export async function POST(request: NextRequest) {
         description: "Exquisite handcrafted gold and diamond jewellery for every memorable occasion.",
       }).catch(() => null);
     }
-
-    const reqSource = body.source === "whatsapp" || body.isWhatsAppEnquiry ? "whatsapp" : (body.source || (isBatch ? "cart" : "quick-request"));
-    const isWhatsApp = reqSource === "whatsapp";
 
     if (isBatch) {
       const itemsToCreate = (items as Array<Record<string, unknown>>).map((it) => {

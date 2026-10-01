@@ -283,7 +283,7 @@ export default function ProductDetailView({
                       productId: product._id,
                       productName: product.name,
                       productSku: product.sku,
-                      productImage: primaryImage,
+                      productImage: images[activeImageIdx]?.url || defaultPlaceholder,
                       visitorName: "Store Visitor",
                       visitorPhone: "WhatsApp Enquiry",
                       quantity: 1,
