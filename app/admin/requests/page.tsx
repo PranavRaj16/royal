@@ -49,30 +49,30 @@ interface OrderGroup {
 const STATUS_CONFIG = {
   pending: {
     label: "Pending",
-    actionLabel: "Mark Pending",
     color: "text-amber-700 dark:text-amber-300 bg-amber-500/10 border-amber-500/30",
-    dot: "bg-amber-500 shadow-sm shadow-amber-500/50",
+    iconColor: "text-amber-600 dark:text-amber-400",
+    dot: "bg-amber-500",
     icon: Clock,
   },
   contacted: {
     label: "Contacted",
-    actionLabel: "Mark Contacted",
     color: "text-blue-700 dark:text-blue-300 bg-blue-500/10 border-blue-500/30",
-    dot: "bg-blue-500 shadow-sm shadow-blue-500/50",
+    iconColor: "text-blue-600 dark:text-blue-400",
+    dot: "bg-blue-500",
     icon: Phone,
   },
   fulfilled: {
     label: "Fulfilled",
-    actionLabel: "Mark Fulfilled",
     color: "text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
-    dot: "bg-emerald-500 shadow-sm shadow-emerald-500/50",
+    iconColor: "text-emerald-600 dark:text-emerald-400",
+    dot: "bg-emerald-500",
     icon: CheckCircle2,
   },
   cancelled: {
     label: "Cancelled",
-    actionLabel: "Mark Cancelled",
     color: "text-rose-700 dark:text-rose-300 bg-rose-500/10 border-rose-500/30",
-    dot: "bg-rose-500 shadow-sm shadow-rose-500/50",
+    iconColor: "text-rose-600 dark:text-rose-400",
+    dot: "bg-rose-500",
     icon: XCircle,
   },
 };
@@ -107,17 +107,17 @@ function StatusDropdown({
   const ActiveIcon = activeCfg.icon;
 
   return (
-    <div className="relative w-full" ref={dropdownRef}>
+    <div className={`relative w-full ${isOpen ? "z-40" : "z-10"}`} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => !isUpdating && setIsOpen((prev) => !prev)}
         disabled={isUpdating}
+        aria-expanded={isOpen}
         className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold border transition shadow-xs cursor-pointer disabled:opacity-60 ${activeCfg.color} hover:brightness-95`}
       >
         <div className="flex items-center gap-2 truncate">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${activeCfg.dot}`} />
           <ActiveIcon className="w-3.5 h-3.5 shrink-0" />
-          <span className="truncate">{activeCfg.actionLabel}</span>
+          <span className="truncate">{activeCfg.label}</span>
         </div>
         {isUpdating ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 opacity-70" />
@@ -131,7 +131,10 @@ function StatusDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 bottom-full sm:bottom-auto sm:top-full mb-1.5 sm:mb-0 sm:mt-1.5 w-48 bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl z-30 p-1.5 space-y-1 animate-in fade-in-50 zoom-in-95 duration-150 backdrop-blur-md">
+        <div className="absolute right-0 top-full mt-1.5 w-full min-w-[170px] bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl z-50 p-1.5 space-y-0.5 animate-in fade-in-50 zoom-in-95 duration-150 backdrop-blur-md">
+          <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-[var(--muted)]">
+            Change Status
+          </div>
           {(Object.keys(STATUS_CONFIG) as Array<keyof typeof STATUS_CONFIG>).map((statusKey) => {
             const cfg = STATUS_CONFIG[statusKey];
             const Icon = cfg.icon;
@@ -144,18 +147,17 @@ function StatusDropdown({
                   setIsOpen(false);
                   if (!isCurrent) onSelect(statusKey);
                 }}
-                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition text-left cursor-pointer ${
+                className={`w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs transition text-left cursor-pointer ${
                   isCurrent
-                    ? `${cfg.color} font-bold`
-                    : "text-[var(--foreground)] hover:bg-[var(--surface-2)]"
+                    ? "bg-[var(--surface-2)] text-[var(--foreground)] font-semibold"
+                    : "text-[var(--foreground)] hover:bg-[var(--surface-2)] font-medium"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                  <Icon className="w-3.5 h-3.5 opacity-80" />
-                  <span>{cfg.actionLabel}</span>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${cfg.iconColor}`} />
+                  <span className="truncate">{cfg.label}</span>
                 </div>
-                {isCurrent && <Check className="w-3.5 h-3.5 shrink-0" />}
+                {isCurrent && <Check className="w-3.5 h-3.5 text-[#B81862] shrink-0" />}
               </button>
             );
           })}
@@ -569,9 +571,9 @@ export default function AdminRequestsPage() {
             const isDeleting = deletingKey === group.groupKey;
             const isMultiItem = group.items.length > 1;
             return (
-              <div key={group.groupKey} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl overflow-hidden hover:border-[var(--muted)]/40 transition shadow-sm">
+              <div key={group.groupKey} className="bg-[var(--card)] border border-[var(--border)] rounded-2xl hover:border-[var(--muted)]/40 transition shadow-sm relative">
                 {/* Order Header Bar */}
-                <div className="px-5 py-3 sm:px-6 border-b border-[var(--border)]/60 flex flex-col sm:flex-row sm:items-center gap-3 justify-between bg-[var(--surface-2)]/40">
+                <div className="px-5 py-3 sm:px-6 border-b border-[var(--border)]/60 flex flex-col sm:flex-row sm:items-center gap-3 justify-between bg-[var(--surface-2)]/40 rounded-t-2xl">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <ShoppingBag className="w-4 h-4 text-[#B81862] shrink-0" />
                     <span className="font-mono text-xs font-bold text-[var(--foreground)] bg-[var(--surface-2)] px-2.5 py-1 rounded-lg border border-[var(--border)] flex items-center gap-1.5 shadow-xs">
@@ -582,7 +584,6 @@ export default function AdminRequestsPage() {
                     <span className="text-[11px] text-[var(--muted)] flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(group.createdAt)}</span>
                   </div>
                   <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold border whitespace-nowrap self-start sm:self-auto ${cfg.color}`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                     <StatusIcon className="w-3 h-3" />
                     {cfg.label}
                   </span>
