@@ -53,12 +53,14 @@ export default function StoreHeader({
             </button>
 
             <nav className="hidden lg:flex items-center gap-6 text-xs font-semibold uppercase tracking-wider text-[#141414]">
-              <Link
-                href={`/store/${business.slug}#categories`}
-                className="hover:text-[#B81862] transition"
-              >
-                Collections
-              </Link>
+              {categories && categories.length > 0 && (
+                <Link
+                  href={`/store/${business.slug}#categories`}
+                  className="hover:text-[#B81862] transition"
+                >
+                  Collections
+                </Link>
+              )}
               <Link
                 href={`/store/${business.slug}#products`}
                 className="hover:text-[#B81862] transition"
@@ -159,28 +161,32 @@ export default function StoreHeader({
                 </span>
                 <button
                   onClick={() => setMobileMenuOpen(false)}
-                  className="p-1 text-gray-500 hover:text-black"
+                  className="p-1 text-gray-500 hover:text-black cursor-pointer"
                 >
                   <X className="w-6 h-6" />
                 </button>
               </div>
 
               <div className="py-6 space-y-4">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862]">
-                  Categories
-                </span>
-                <div className="space-y-2">
-                  {categories.map((c) => (
-                    <Link
-                      key={c._id}
-                      href={`/store/${business.slug}?category=${c.slug}#products`}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block text-sm font-medium text-gray-800 hover:text-[#B81862] transition"
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
-                </div>
+                {categories && categories.length > 0 && (
+                  <>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#B81862]">
+                      Categories
+                    </span>
+                    <div className="space-y-2">
+                      {categories.map((c) => (
+                        <Link
+                          key={c._id}
+                          href={`/store/${business.slug}?category=${c.slug}#products`}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="block text-sm font-medium text-gray-800 hover:text-[#B81862] transition"
+                        >
+                          {c.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 <div className="pt-4 border-t border-[#E8E2D9] space-y-3">
                   <Link
