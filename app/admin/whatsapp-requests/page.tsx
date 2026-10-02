@@ -242,20 +242,28 @@ export default function WhatsAppRequestsPage() {
   const fetchRequests = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      if (typeof document !== "undefined" && document.hidden && silent) return;
       const res = await fetch("/api/admin/requests?source=whatsapp&limit=500", {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       });
+      if (!res.ok) {
+        if (!silent) showToast("Failed to load WhatsApp requests", "error");
+        return;
+      }
       const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         const list = data.requests || [];
         setRequests(list);
         syncSidebarPendingCount(list);
       } else if (!silent) {
         showToast("Failed to load WhatsApp requests", "error");
       }
-    } catch {
-      if (!silent) showToast("Failed to load WhatsApp requests", "error");
+    } catch (err) {
+      if (!silent) {
+        console.warn("WhatsApp requests fetch error:", err);
+        showToast("Failed to load WhatsApp requests", "error");
+      }
     } finally {
       if (!silent) setLoading(false);
     }
@@ -263,7 +271,7 @@ export default function WhatsAppRequestsPage() {
 
   useEffect(() => {
     fetchRequests(false);
-    const interval = setInterval(() => fetchRequests(true), 12000);
+    const interval = setInterval(() => fetchRequests(true), 15000);
     const onFocus = () => fetchRequests(true);
     window.addEventListener("focus", onFocus);
     return () => {

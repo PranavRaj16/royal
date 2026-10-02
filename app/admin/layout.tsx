@@ -61,14 +61,16 @@ export default function AdminLayout({
   useEffect(() => {
     if (isLoginPage) return;
     const fetchCount = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+
       // Fetch pending orders (Orders tab)
       fetch("/api/admin/requests?source=orders&limit=1", {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       })
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          if (d.success) {
+          if (d?.success) {
             const count = typeof d.pendingCount === "number" ? d.pendingCount : (d.total || 0);
             setPendingOrders(count);
           }
@@ -80,9 +82,9 @@ export default function AdminLayout({
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       })
-        .then((r) => r.json())
+        .then((r) => (r.ok ? r.json() : null))
         .then((d) => {
-          if (d.success) {
+          if (d?.success) {
             const count = typeof d.pendingCount === "number" ? d.pendingCount : (d.total || 0);
             setPendingWhatsAppRequests(count);
           }
@@ -91,7 +93,7 @@ export default function AdminLayout({
     };
 
     fetchCount();
-    const interval = setInterval(fetchCount, 5000);
+    const interval = setInterval(fetchCount, 15000);
 
     const onRequestsUpdated = (e: Event) => {
       const customEvent = e as CustomEvent<{ type?: "orders" | "whatsapp"; pendingCount?: number }>;

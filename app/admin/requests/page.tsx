@@ -323,12 +323,17 @@ export default function AdminRequestsPage() {
   const fetchRequests = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
+      if (typeof document !== "undefined" && document.hidden && silent) return;
       const res = await fetch("/api/admin/requests?source=orders&limit=200", {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       });
+      if (!res.ok) {
+        if (!silent) showToast("Failed to load orders", "error");
+        return;
+      }
       const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         const list = data.requests || [];
         setRequests(list);
         syncSidebarPendingCount(list);
@@ -336,19 +341,21 @@ export default function AdminRequestsPage() {
         showToast("Failed to load orders", "error");
       }
     } catch (err) {
-      console.error(err);
-      if (!silent) showToast("Failed to load orders", "error");
+      if (!silent) {
+        console.warn("Orders fetch error:", err);
+        showToast("Failed to load orders", "error");
+      }
     } finally {
       if (!silent) setLoading(false);
     }
   }, [syncSidebarPendingCount]);
 
-  // Initial load + periodic silent polling every 10s + window focus
+  // Initial load + periodic silent polling every 15s + window focus
   useEffect(() => {
     fetchRequests(false);
     const interval = setInterval(() => {
       fetchRequests(true);
-    }, 10000);
+    }, 15000);
     const onFocus = () => fetchRequests(true);
     window.addEventListener("focus", onFocus);
     return () => {
