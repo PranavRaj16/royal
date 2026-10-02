@@ -313,7 +313,7 @@ export default function AdminRequestsPage() {
         const pendingGroups = groupRequests(reqList).filter((g) => g.status === "pending");
         window.dispatchEvent(
           new CustomEvent("rj:requests-updated", {
-            detail: { pendingCount: pendingGroups.length },
+            detail: { type: "orders", pendingCount: pendingGroups.length },
           })
         );
       }, 0);

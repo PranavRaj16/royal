@@ -36,7 +36,8 @@ export default function AdminLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [business, setBusiness] = useState<IBusiness | null>(null);
-  const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState(0);
+  const [pendingWhatsAppRequests, setPendingWhatsAppRequests] = useState(0);
 
   const isLoginPage = pathname === "/admin/login";
 
@@ -60,7 +61,8 @@ export default function AdminLayout({
   useEffect(() => {
     if (isLoginPage) return;
     const fetchCount = () => {
-      fetch("/api/admin/requests?limit=1", {
+      // Fetch pending orders (Orders tab)
+      fetch("/api/admin/requests?source=orders&limit=1", {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       })
@@ -68,22 +70,42 @@ export default function AdminLayout({
         .then((d) => {
           if (d.success) {
             const count = typeof d.pendingCount === "number" ? d.pendingCount : (d.total || 0);
-            setPendingRequests(count);
+            setPendingOrders(count);
+          }
+        })
+        .catch(() => {});
+
+      // Fetch pending WhatsApp enquiries (Requests tab)
+      fetch("/api/admin/requests?source=whatsapp&limit=1", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success) {
+            const count = typeof d.pendingCount === "number" ? d.pendingCount : (d.total || 0);
+            setPendingWhatsAppRequests(count);
           }
         })
         .catch(() => {});
     };
+
     fetchCount();
     const interval = setInterval(fetchCount, 5000);
+
     const onRequestsUpdated = (e: Event) => {
-      const customEvent = e as CustomEvent<{ pendingCount?: number }>;
+      const customEvent = e as CustomEvent<{ type?: "orders" | "whatsapp"; pendingCount?: number }>;
       if (typeof customEvent.detail?.pendingCount === "number") {
-        const count = customEvent.detail.pendingCount;
-        setTimeout(() => setPendingRequests(count), 0);
+        if (customEvent.detail.type === "whatsapp") {
+          setPendingWhatsAppRequests(customEvent.detail.pendingCount);
+        } else {
+          setPendingOrders(customEvent.detail.pendingCount);
+        }
       } else {
         setTimeout(() => fetchCount(), 0);
       }
     };
+
     const onFocus = () => fetchCount();
     window.addEventListener("rj:requests-updated", onRequestsUpdated);
     window.addEventListener("focus", onFocus);
@@ -139,7 +161,13 @@ export default function AdminLayout({
             pathname === item.href ||
             (item.href !== "/admin/dashboard" &&
               pathname.startsWith(item.href));
-          const showBadge = item.href === "/admin/requests" && pendingRequests > 0;
+          const badgeCount =
+            item.href === "/admin/requests"
+              ? pendingOrders
+              : item.href === "/admin/whatsapp-requests"
+              ? pendingWhatsAppRequests
+              : 0;
+          const showBadge = badgeCount > 0;
           return (
             <Link
               key={item.href}
@@ -156,7 +184,7 @@ export default function AdminLayout({
               {item.label}
               {showBadge && (
                 <span className="ml-auto flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#B81862] text-white text-[10px] font-bold">
-                  {pendingRequests > 9 ? "9+" : pendingRequests}
+                  {badgeCount > 9 ? "9+" : badgeCount}
                 </span>
               )}
               {active && !showBadge && (

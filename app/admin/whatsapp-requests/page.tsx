@@ -226,6 +226,19 @@ export default function WhatsAppRequestsPage() {
     setTimeout(() => setToastMsg(""), 3500);
   };
 
+  const syncSidebarPendingCount = useCallback((reqList: ItemRequest[]) => {
+    if (typeof window !== "undefined") {
+      setTimeout(() => {
+        const pendingCount = reqList.filter((r) => r.status === "pending").length;
+        window.dispatchEvent(
+          new CustomEvent("rj:requests-updated", {
+            detail: { type: "whatsapp", pendingCount },
+          })
+        );
+      }, 0);
+    }
+  }, []);
+
   const fetchRequests = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -235,7 +248,9 @@ export default function WhatsAppRequestsPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setRequests(data.requests || []);
+        const list = data.requests || [];
+        setRequests(list);
+        syncSidebarPendingCount(list);
       } else if (!silent) {
         showToast("Failed to load WhatsApp requests", "error");
       }
@@ -244,7 +259,7 @@ export default function WhatsAppRequestsPage() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, []);
+  }, [syncSidebarPendingCount]);
 
   useEffect(() => {
     fetchRequests(false);
@@ -267,11 +282,13 @@ export default function WhatsAppRequestsPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setRequests((prev) =>
-          prev.map((r) =>
+        setRequests((prev) => {
+          const next = prev.map((r) =>
             r._id === id ? { ...r, status: newStatus as ItemRequest["status"] } : r
-          )
-        );
+          );
+          syncSidebarPendingCount(next);
+          return next;
+        });
         showToast(`Status updated to ${STATUS_CONFIG[newStatus as keyof typeof STATUS_CONFIG]?.label || newStatus}`);
       } else {
         showToast(data.error || "Failed to update status", "error");
@@ -289,7 +306,11 @@ export default function WhatsAppRequestsPage() {
       const res = await fetch(`/api/admin/requests/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (res.ok && data.success) {
-        setRequests((prev) => prev.filter((r) => r._id !== id));
+        setRequests((prev) => {
+          const next = prev.filter((r) => r._id !== id);
+          syncSidebarPendingCount(next);
+          return next;
+        });
         showToast("Request deleted successfully");
       } else {
         showToast(data.error || "Failed to delete request", "error");
