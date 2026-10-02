@@ -133,26 +133,18 @@ function ProductsContent() {
     });
   }, [fetchProducts, fetchCategories]);
 
-  // Helper to determine if a product belongs to a category
+  // Helper to determine if a product belongs to a category strictly
   const isProductInCat = useCallback((p: IProduct, cat: ICategory) => {
     if (!p || !cat) return false;
 
-    const pCatId =
+    const pCatObj =
       typeof p.categoryId === "object" && p.categoryId !== null
-        ? (p.categoryId as { _id?: string })._id
-        : typeof p.categoryId === "string"
-        ? p.categoryId
-        : p.category?._id;
+        ? (p.categoryId as { _id?: string; slug?: string; name?: string })
+        : (p.category as { _id?: string; slug?: string; name?: string } | undefined);
 
-    const pCatSlug =
-      typeof p.categoryId === "object" && p.categoryId !== null
-        ? (p.categoryId as { slug?: string }).slug
-        : p.category?.slug;
-
-    const pCatName =
-      typeof p.categoryId === "object" && p.categoryId !== null
-        ? (p.categoryId as { name?: string }).name
-        : p.category?.name;
+    const pCatId = typeof p.categoryId === "string" ? p.categoryId : pCatObj?._id;
+    const pCatSlug = pCatObj?.slug;
+    const pCatName = pCatObj?.name;
 
     const pCatIdStr = pCatId ? String(pCatId).trim().toLowerCase() : "";
     const catIdStr = cat._id ? String(cat._id).trim().toLowerCase() : "";
@@ -161,97 +153,16 @@ function ProductsContent() {
     const catNameStr = cat.name ? String(cat.name).trim().toLowerCase() : "";
     const pCatNameStr = pCatName ? String(pCatName).trim().toLowerCase() : "";
 
-    // 1. Direct match on ID, Slug, or Name
-    if (
-      (pCatIdStr && catIdStr && pCatIdStr === catIdStr) ||
-      (pCatIdStr && catSlugStr && pCatIdStr === catSlugStr) ||
-      (pCatSlugStr && catSlugStr && pCatSlugStr === catSlugStr) ||
-      (pCatNameStr && catNameStr && pCatNameStr === catNameStr) ||
-      (pCatIdStr && catNameStr && pCatIdStr === catNameStr) ||
-      (pCatNameStr && catSlugStr && pCatNameStr.replace(/[^a-z0-9]/g, "") === catSlugStr.replace(/[^a-z0-9]/g, ""))
-    ) {
-      return true;
-    }
+    // 1. Direct match on ID
+    if (pCatIdStr && catIdStr && pCatIdStr === catIdStr) return true;
 
-    // 2. Match by SKU prefix / format (DW-(Category letter)-01 or legacy RJ-...)
-    const sku = String(p.sku || "").toUpperCase().trim();
-    if (sku) {
-      // Necklaces
-      if (
-        (sku.startsWith("DW-N-") || sku.startsWith("RJ-NC-") || sku.startsWith("NC-") || sku.startsWith("DW-NC-")) &&
-        (catSlugStr.includes("neck") || catNameStr.includes("neck"))
-      ) return true;
+    // 2. Direct match on Slug
+    if (pCatSlugStr && catSlugStr && pCatSlugStr === catSlugStr) return true;
+    if (pCatIdStr && catSlugStr && pCatIdStr === catSlugStr) return true;
 
-      // Rings
-      if (
-        (sku.startsWith("DW-R-") || sku.startsWith("RJ-RG-") || sku.startsWith("RG-") || sku.startsWith("DW-RG-")) &&
-        (catSlugStr.includes("ring") || catNameStr.includes("ring"))
-      ) return true;
-
-      // Earrings
-      if (
-        (sku.startsWith("DW-E-") || sku.startsWith("RJ-ER-") || sku.startsWith("ER-") || sku.startsWith("DW-ER-")) &&
-        (catSlugStr.includes("ear") || catNameStr.includes("ear"))
-      ) return true;
-
-      // Bracelets & Bangles
-      if (
-        (sku.startsWith("DW-B-") || sku.startsWith("RJ-BR-") || sku.startsWith("DW-BR-") || sku.startsWith("DW-BG-") || sku.startsWith("RJ-BG-") || sku.startsWith("BR-") || sku.startsWith("BG-")) &&
-        (catSlugStr.includes("bang") || catSlugStr.includes("brac") || catNameStr.includes("bang") || catNameStr.includes("brac"))
-      ) return true;
-
-      // Pendants
-      if (
-        (sku.startsWith("DW-P-") || sku.startsWith("RJ-PD-") || sku.startsWith("PD-")) &&
-        (catSlugStr.includes("pend") || catNameStr.includes("pend"))
-      ) return true;
-
-      // Mangalsutra
-      if (
-        (sku.startsWith("DW-M-") || sku.startsWith("RJ-MG-") || sku.startsWith("MG-")) &&
-        (catSlugStr.includes("mang") || catNameStr.includes("mang"))
-      ) return true;
-
-      // Gold Jewellery
-      if (
-        (sku.startsWith("DW-GL-") || sku.startsWith("DW-G-") || sku.startsWith("RJ-GL-") || sku.startsWith("GL-")) &&
-        (catSlugStr.includes("gold") || catNameStr.includes("gold"))
-      ) return true;
-
-      // Diamond Jewellery
-      if (
-        (sku.startsWith("DW-DM-") || sku.startsWith("DW-D-") || sku.startsWith("RJ-DM-") || sku.startsWith("DM-")) &&
-        (catSlugStr.includes("diam") || catNameStr.includes("diam"))
-      ) return true;
-
-      // Bridal Collection
-      if (
-        (sku.startsWith("DW-BD-") || sku.startsWith("RJ-BD-") || sku.startsWith("BD-")) &&
-        (catSlugStr.includes("brid") || catNameStr.includes("brid"))
-      ) return true;
-
-      // Generic DW-[Letter]- match against category starting letter
-      const dwMatch = sku.match(/^DW-([A-Z]{1,2})-/);
-      if (dwMatch) {
-        const letter = dwMatch[1];
-        const catFirstLetter = cat.name?.trim().charAt(0).toUpperCase();
-        if (letter === catFirstLetter) {
-          return true;
-        }
-      }
-    }
-
-    // 3. Fallback: Product Name keyword matching if categoryId was missing
-    const prodName = String(p.name || "").toLowerCase();
-    if (prodName) {
-      if (catNameStr.includes("neck") && (prodName.includes("necklace") || prodName.includes("choker") || prodName.includes("rani haar") || prodName.includes("haar"))) return true;
-      if (catNameStr.includes("ring") && (prodName.includes("ring") || prodName.includes("band") || prodName.includes("solitaire ring"))) return true;
-      if (catNameStr.includes("ear") && (prodName.includes("earring") || prodName.includes("jhumki") || prodName.includes("stud") || prodName.includes("chandelier"))) return true;
-      if ((catNameStr.includes("bang") || catNameStr.includes("brac")) && (prodName.includes("bangle") || prodName.includes("bracelet") || prodName.includes("kada") || prodName.includes("cuff"))) return true;
-      if (catNameStr.includes("brid") && (prodName.includes("bridal") || prodName.includes("mathapatti") || prodName.includes("nath") || prodName.includes("dulhan"))) return true;
-      if (catNameStr.includes("diam") && (prodName.includes("diamond") || prodName.includes("solitaire") || prodName.includes("eternity"))) return true;
-      if (catNameStr.includes("gold") && (prodName.includes("gold") || prodName.includes("temple") || prodName.includes("antique"))) return true;
-    }
+    // 3. Direct match on Exact Name
+    if (pCatNameStr && catNameStr && pCatNameStr === catNameStr) return true;
+    if (pCatIdStr && catNameStr && pCatIdStr === catNameStr) return true;
 
     return false;
   }, []);
@@ -260,23 +171,17 @@ function ProductsContent() {
   const currentCategory = useMemo(() => {
     if (!selectedFolderId || selectedFolderId === "all" || selectedFolderId === "uncategorized") return null;
     const target = String(selectedFolderId).toLowerCase().trim();
-    const targetClean = target.replace(/[^a-z0-9]/g, "");
 
     return (
       categories.find((c) => {
         const cId = String(c._id || "").toLowerCase().trim();
         const cSlug = String(c.slug || "").toLowerCase().trim();
         const cName = String(c.name || "").toLowerCase().trim();
-        const cSlugClean = cSlug.replace(/[^a-z0-9]/g, "");
-        const cNameClean = cName.replace(/[^a-z0-9]/g, "");
 
         return (
           cId === target ||
           cSlug === target ||
-          cName === target ||
-          (cSlugClean && targetClean && cSlugClean === targetClean) ||
-          (cNameClean && targetClean && cNameClean === targetClean) ||
-          (cNameClean && targetClean && (cNameClean.includes(targetClean) || targetClean.includes(cNameClean)))
+          cName === target
         );
       }) || null
     );

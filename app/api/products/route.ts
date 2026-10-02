@@ -93,77 +93,30 @@ export async function GET(request: NextRequest) {
       .sort(sortObj);
 
     if (products.length > 0) {
-      // Find all categories to repair any orphaned/null categoryId
       const CategoryModel = mongoose.models.Category || (await import("@/models")).Category;
-      const allDbCats = await CategoryModel.find({
-        businessId: new mongoose.Types.ObjectId(session.businessId),
-      });
-
+      const allDbCats = await CategoryModel.find({}).lean();
       const { DEMO_CATEGORIES } = await import("@/lib/demoData");
-      const combinedCats = allDbCats.length > 0 ? allDbCats : DEMO_CATEGORIES;
+      const combinedCats = [...allDbCats, ...DEMO_CATEGORIES];
 
-      const repairedProducts = products.map((prod) => {
+      const cleanedProducts = products.map((prod) => {
         const pObj: any = prod.toObject ? prod.toObject() : { ...prod };
-        if (!pObj.categoryId) {
-          const skuUpper = String(pObj.sku || "").toUpperCase();
-          const nameLower = String(pObj.name || "").toLowerCase();
-
-          // Match by SKU prefix or name
-          let matchedCat = combinedCats.find((c: any) => {
-            const cName = String(c.name || "").toLowerCase();
-            if (skuUpper.startsWith("DW-N-") || skuUpper.startsWith("RJ-NC-") || skuUpper.startsWith("NC-")) {
-              return cName.includes("neck");
-            }
-            if (skuUpper.startsWith("DW-R-") || skuUpper.startsWith("RJ-RG-") || skuUpper.startsWith("RG-")) {
-              return cName.includes("ring");
-            }
-            if (skuUpper.startsWith("DW-E-") || skuUpper.startsWith("RJ-ER-") || skuUpper.startsWith("ER-")) {
-              return cName.includes("ear");
-            }
-            if (skuUpper.startsWith("DW-B-") || skuUpper.startsWith("RJ-BR-") || skuUpper.startsWith("DW-BG-") || skuUpper.startsWith("RJ-BG-")) {
-              return cName.includes("bang") || cName.includes("brac");
-            }
-            if (skuUpper.startsWith("DW-P-") || skuUpper.startsWith("RJ-PD-")) {
-              return cName.includes("pend");
-            }
-            if (skuUpper.startsWith("DW-GL-") || skuUpper.startsWith("RJ-GL-") || skuUpper.startsWith("DW-G-")) {
-              return cName.includes("gold");
-            }
-            if (skuUpper.startsWith("DW-DM-") || skuUpper.startsWith("RJ-DM-") || skuUpper.startsWith("DW-D-")) {
-              return cName.includes("diam");
-            }
-            if (skuUpper.startsWith("DW-BD-") || skuUpper.startsWith("RJ-BD-")) {
-              return cName.includes("brid");
-            }
-            return false;
-          });
-
-          if (!matchedCat) {
-            matchedCat = combinedCats.find((c: any) => {
-              const cName = String(c.name || "").toLowerCase();
-              if (nameLower.includes("necklace") || nameLower.includes("choker") || nameLower.includes("haar")) return cName.includes("neck");
-              if (nameLower.includes("ring") || nameLower.includes("band")) return cName.includes("ring");
-              if (nameLower.includes("earring") || nameLower.includes("jhumki") || nameLower.includes("stud")) return cName.includes("ear");
-              if (nameLower.includes("bangle") || nameLower.includes("bracelet") || nameLower.includes("kada")) return cName.includes("bang") || cName.includes("brac");
-              if (nameLower.includes("bridal") || nameLower.includes("mathapatti")) return cName.includes("brid");
-              if (nameLower.includes("diamond") || nameLower.includes("solitaire")) return cName.includes("diam");
-              if (nameLower.includes("gold") || nameLower.includes("temple")) return cName.includes("gold");
-              return false;
-            });
-          }
-
-          if (matchedCat) {
+        if (!pObj.categoryId && prod.categoryId) {
+          const rawId = String(prod.categoryId);
+          const matched = combinedCats.find(
+            (c: any) => String(c._id) === rawId || String(c.slug) === rawId || String(c.name) === rawId
+          );
+          if (matched) {
             pObj.categoryId = {
-              _id: String(matchedCat._id),
-              name: matchedCat.name,
-              slug: matchedCat.slug,
+              _id: String(matched._id),
+              name: matched.name,
+              slug: matched.slug,
             };
           }
         }
         return pObj;
       });
 
-      return NextResponse.json({ success: true, products: repairedProducts });
+      return NextResponse.json({ success: true, products: cleanedProducts });
     }
 
     // If DB has no products or is offline, return demo products
@@ -258,7 +211,7 @@ export async function POST(request: NextRequest) {
         : name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
 
       const resolvedCatId =
-        typeof categoryId === "object" && categoryId !== null ? (categoryId._id || categoryId.slug || categoryId) : categoryId;
+        typeof categoryId === "object" && categoryId !== null ? (categoryId._id || categoryId.slug || categoryId.name || categoryId) : categoryId;
 
       const BusinessModel = mongoose.models.Business || (await import("@/models")).Business;
       const primaryBiz = await BusinessModel.findOne();
@@ -271,32 +224,10 @@ export async function POST(request: NextRequest) {
       const CategoryModel = mongoose.models.Category || (await import("@/models")).Category;
       const { DEMO_CATEGORIES } = await import("@/lib/demoData");
 
-      let targetCatInfo = DEMO_CATEGORIES.find(
-        (c) =>
-          c._id === String(resolvedCatId) ||
-          c.slug === String(resolvedCatId).toLowerCase() ||
-          c.name.toLowerCase() === String(resolvedCatId).toLowerCase()
-      );
-
-      // If resolvedCatId doesn't match by ID/slug, try matching by SKU prefix
-      if (!targetCatInfo && finalSku) {
-        targetCatInfo = DEMO_CATEGORIES.find((c) => {
-          const cName = c.name.toLowerCase();
-          if (finalSku.startsWith("DW-N-") || finalSku.startsWith("RJ-NC-")) return cName.includes("neck");
-          if (finalSku.startsWith("DW-R-") || finalSku.startsWith("RJ-RG-")) return cName.includes("ring");
-          if (finalSku.startsWith("DW-E-") || finalSku.startsWith("RJ-ER-")) return cName.includes("ear");
-          if (finalSku.startsWith("DW-B-") || finalSku.startsWith("RJ-BR-")) return cName.includes("bang") || cName.includes("brac");
-          if (finalSku.startsWith("DW-P-")) return cName.includes("pend");
-          if (finalSku.startsWith("DW-GL-") || finalSku.startsWith("DW-G-")) return cName.includes("gold");
-          if (finalSku.startsWith("DW-DM-") || finalSku.startsWith("DW-D-")) return cName.includes("diam");
-          if (finalSku.startsWith("DW-BD-")) return cName.includes("brid");
-          return false;
-        });
-      }
-
       let categoryObjectId: mongoose.Types.ObjectId | null = null;
       let matchedCatDoc = null;
 
+      // 1. Try finding category in DB by ObjectId, slug, or exact name
       if (mongoose.Types.ObjectId.isValid(String(resolvedCatId))) {
         categoryObjectId = new mongoose.Types.ObjectId(String(resolvedCatId));
         matchedCatDoc = await CategoryModel.findOne({ _id: categoryObjectId });
@@ -304,17 +235,29 @@ export async function POST(request: NextRequest) {
 
       if (!matchedCatDoc) {
         matchedCatDoc = await CategoryModel.findOne({
-          businessId: businessObjectId,
-          $or: [{ slug: resolvedCatId }, { name: resolvedCatId }],
+          $or: [
+            { slug: String(resolvedCatId).toLowerCase() },
+            { name: String(resolvedCatId) },
+          ],
         });
         if (matchedCatDoc) {
           categoryObjectId = matchedCatDoc._id;
         }
       }
 
-      // If category document still does not exist in MongoDB, create/upsert it from targetCatInfo
-      if (!matchedCatDoc && targetCatInfo) {
-        const catIdToUse = mongoose.Types.ObjectId.isValid(targetCatInfo._id)
+      // 2. If not in DB, check if it matches a demo category exactly
+      const targetCatInfo = DEMO_CATEGORIES.find(
+        (c) =>
+          c._id === String(resolvedCatId) ||
+          c.slug === String(resolvedCatId).toLowerCase() ||
+          c.name.toLowerCase() === String(resolvedCatId).toLowerCase()
+      );
+
+      // If category document still does not exist in MongoDB, create/upsert it from targetCatInfo or create a new one
+      if (!matchedCatDoc) {
+        const catName = targetCatInfo?.name || String(resolvedCatId);
+        const catSlug = targetCatInfo?.slug || String(resolvedCatId).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        const catIdToUse = targetCatInfo && mongoose.Types.ObjectId.isValid(targetCatInfo._id)
           ? new mongoose.Types.ObjectId(targetCatInfo._id)
           : new mongoose.Types.ObjectId();
         
@@ -324,12 +267,12 @@ export async function POST(request: NextRequest) {
             $set: {
               _id: catIdToUse,
               businessId: businessObjectId,
-              name: targetCatInfo.name,
-              slug: targetCatInfo.slug,
-              description: targetCatInfo.description || "",
-              image: targetCatInfo.image || "",
-              displayOrder: targetCatInfo.displayOrder || 0,
-              isActive: targetCatInfo.isActive !== false,
+              name: catName,
+              slug: catSlug,
+              description: targetCatInfo?.description || "",
+              image: targetCatInfo?.image || "",
+              displayOrder: targetCatInfo?.displayOrder || 0,
+              isActive: targetCatInfo?.isActive !== false,
             },
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -337,10 +280,7 @@ export async function POST(request: NextRequest) {
         categoryObjectId = matchedCatDoc._id;
       }
 
-      const finalCatObjectId: mongoose.Types.ObjectId = categoryObjectId || (await (async () => {
-        const anyCat = await CategoryModel.findOne({ businessId: businessObjectId });
-        return anyCat ? anyCat._id : new mongoose.Types.ObjectId("650000000000000000000014");
-      })());
+      const finalCatObjectId: mongoose.Types.ObjectId = categoryObjectId || matchedCatDoc._id;
 
       const existingSlug = await Product.findOne({
         businessId: businessObjectId,
