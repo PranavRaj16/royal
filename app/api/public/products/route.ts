@@ -22,26 +22,48 @@ export async function GET(request: NextRequest) {
       isPublished: true,
     };
 
+    const CategoryModel = mongoose.models.Category || (await import("@/models")).Category;
+    const activeCategories = await CategoryModel.find({ isActive: true }).select("_id slug name").lean();
+    const activeCatIds = activeCategories.map((c: any) => c._id);
+
+    if (activeCatIds.length > 0) {
+      if (categoryId && categoryId !== "all") {
+        let requestedCatId: mongoose.Types.ObjectId | null = null;
+        if (mongoose.Types.ObjectId.isValid(categoryId)) {
+          requestedCatId = new mongoose.Types.ObjectId(categoryId);
+        } else {
+          const foundCat = activeCategories.find(
+            (c: any) => c.slug === categoryId || c.name === categoryId
+          );
+          if (foundCat) {
+            requestedCatId = foundCat._id;
+          }
+        }
+
+        if (requestedCatId && activeCatIds.some((id: any) => id.equals(requestedCatId))) {
+          query.categoryId = requestedCatId;
+        } else {
+          // Requested category is inactive/hidden, return empty products
+          return NextResponse.json(
+            { success: true, products: [] },
+            {
+              headers: {
+                "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+              },
+            }
+          );
+        }
+      } else {
+        query.categoryId = { $in: activeCatIds };
+      }
+    }
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { shortDescription: { $regex: search, $options: "i" } },
         { tags: { $regex: search, $options: "i" } },
       ];
-    }
-
-    if (categoryId && categoryId !== "all") {
-      if (mongoose.Types.ObjectId.isValid(categoryId)) {
-        query.categoryId = new mongoose.Types.ObjectId(categoryId);
-      } else {
-        const CategoryModel = mongoose.models.Category || (await import("@/models")).Category;
-        const foundCat = await CategoryModel.findOne({
-          $or: [{ slug: categoryId }, { name: categoryId }],
-        });
-        if (foundCat) {
-          query.categoryId = foundCat._id;
-        }
-      }
     }
 
     if (featured === "true") {
@@ -87,6 +109,21 @@ export async function GET(request: NextRequest) {
           p.tags.some((t) => t.toLowerCase().includes(search))
       );
     }
+
+    const { DEMO_CATEGORIES } = await import("@/lib/demoData");
+    const activeDemoCatIds = new Set(
+      DEMO_CATEGORIES.filter((c) => c.isActive !== false).map((c) => c._id)
+    );
+    const activeDemoCatSlugs = new Set(
+      DEMO_CATEGORIES.filter((c) => c.isActive !== false).map((c) => c.slug)
+    );
+
+    filtered = filtered.filter((p) => {
+      const cObj = typeof p.categoryId === "object" ? p.categoryId : null;
+      const cId = String(cObj ? cObj._id : p.categoryId);
+      const cSlug = String(cObj ? cObj.slug : "");
+      return activeDemoCatIds.has(cId) || (cSlug && activeDemoCatSlugs.has(cSlug));
+    });
 
     if (categoryId && categoryId !== "all") {
       filtered = filtered.filter((p) => {

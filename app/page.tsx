@@ -234,6 +234,10 @@ export default function SimpleCataloguePage() {
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
+    const activeCatIds = new Set(dedupedCategories.map((c) => String(c._id).toLowerCase()));
+    const activeCatSlugs = new Set(dedupedCategories.map((c) => String(c.slug || "").toLowerCase()).filter(Boolean));
+    const activeCatNames = new Set(dedupedCategories.map((c) => String(c.name || "").toLowerCase()).filter(Boolean));
+
     const activeCat = dedupedCategories.find(
       (c) =>
         c._id === selectedCategory ||
@@ -242,6 +246,24 @@ export default function SimpleCataloguePage() {
     );
 
     const result = products.filter((p) => {
+      // 0. Ensure product belongs to an active, visible category
+      if (dedupedCategories.length > 0) {
+        const catObj =
+          typeof p.categoryId === "object" && p.categoryId !== null
+            ? (p.categoryId as { _id?: string; slug?: string; name?: string })
+            : (p.category as { _id?: string; slug?: string; name?: string } | undefined);
+        const catId = (typeof p.categoryId === "string" ? p.categoryId : catObj?._id || "").toLowerCase();
+        const catSlug = (catObj?.slug || "").toLowerCase();
+        const catName = (catObj?.name || "").toLowerCase();
+
+        const isCatActive =
+          activeCatIds.has(catId) ||
+          (catSlug && activeCatSlugs.has(catSlug)) ||
+          (catName && activeCatNames.has(catName));
+
+        if (!isCatActive) return false;
+      }
+
       // 1. Category Filter
       if (selectedCategory !== "all") {
         const catObj =

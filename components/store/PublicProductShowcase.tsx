@@ -52,6 +52,29 @@ export default function PublicProductShowcase({
   const filteredProducts = useMemo(() => {
     let result = [...initialProducts];
 
+    // Filter out products belonging to hidden/inactive categories
+    if (categories.length > 0) {
+      const activeCatIds = new Set(categories.map((c) => String(c._id).toLowerCase()));
+      const activeCatSlugs = new Set(categories.map((c) => String(c.slug || "").toLowerCase()).filter(Boolean));
+      const activeCatNames = new Set(categories.map((c) => String(c.name || "").toLowerCase()).filter(Boolean));
+
+      result = result.filter((p) => {
+        const catObj =
+          typeof p.categoryId === "object" && p.categoryId !== null
+            ? (p.categoryId as { _id?: string; slug?: string; name?: string })
+            : (p.category as { _id?: string; slug?: string; name?: string } | undefined);
+        const catId = (typeof p.categoryId === "string" ? p.categoryId : catObj?._id || "").toLowerCase();
+        const catSlug = (catObj?.slug || "").toLowerCase();
+        const catName = (catObj?.name || "").toLowerCase();
+
+        return (
+          activeCatIds.has(catId) ||
+          (catSlug && activeCatSlugs.has(catSlug)) ||
+          (catName && activeCatNames.has(catName))
+        );
+      });
+    }
+
     // Search query
     if (search.trim()) {
       const q = search.toLowerCase().trim();
