@@ -1410,58 +1410,94 @@ function ProductsContent() {
                   </span>
                 </div>
 
+                {/* Unconditionally mounted file input so ref is always available */}
+                <input
+                  ref={catFileInputRef}
+                  id="cat-image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCatImageUpload}
+                  disabled={catUploading}
+                  className="hidden"
+                />
+
                 {catForm.image ? (
-                  <div className="relative rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface-2)] group shadow-sm">
-                    <div className="h-32 w-full relative bg-[#111]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={catForm.image}
-                        alt="Category Cover"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = getCategoryPlaceholder(catForm.name);
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <div className="space-y-2">
+                    <div className="relative rounded-2xl overflow-hidden border border-[var(--border)] bg-[var(--surface-2)] group shadow-sm">
+                      <div className="h-36 w-full relative bg-[#111]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={catForm.image}
+                          alt="Category Cover"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = getCategoryPlaceholder(catForm.name);
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => catFileInputRef.current?.click()}
+                            disabled={catUploading}
+                            className="px-3.5 py-1.5 rounded-xl bg-white text-black text-xs font-bold shadow-lg hover:bg-gray-100 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            {catUploading ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Upload className="w-3.5 h-3.5" />
+                            )}
+                            Change Image
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCatForm((prev) => ({ ...prev, image: "" }))}
+                            disabled={catUploading}
+                            className="px-3.5 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold shadow-lg hover:bg-red-700 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Remove
+                          </button>
+                        </div>
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-white text-[10px] font-semibold border border-white/10">
+                          Cover Photo
+                        </div>
+                      </div>
+                      <div className="p-2.5 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-between gap-2 text-xs">
                         <button
                           type="button"
                           onClick={() => catFileInputRef.current?.click()}
                           disabled={catUploading}
-                          className="px-3 py-1.5 rounded-xl bg-white text-black text-xs font-bold shadow-lg hover:bg-gray-100 transition flex items-center gap-1.5 cursor-pointer"
+                          className="text-xs font-bold text-[#d43d8a] hover:underline flex items-center gap-1 cursor-pointer"
                         >
                           <Upload className="w-3.5 h-3.5" />
-                          Change
+                          <span>{catUploading ? "Uploading..." : "Upload New Photo"}</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setCatForm((prev) => ({ ...prev, image: "" }))}
-                          disabled={catUploading}
-                          className="px-3 py-1.5 rounded-xl bg-red-600 text-white text-xs font-bold shadow-lg hover:bg-red-700 transition flex items-center gap-1.5 cursor-pointer"
+                          className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer shrink-0"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Remove
+                          Clear
                         </button>
                       </div>
-                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-white text-[10px] font-semibold border border-white/10">
-                        Cover Photo
-                      </div>
                     </div>
-                    <div className="p-2.5 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-between gap-2 text-xs">
-                      <span className="text-[11px] text-[var(--muted)] truncate font-mono max-w-[240px]">
-                        {catForm.image}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setCatForm((prev) => ({ ...prev, image: "" }))}
-                        className="text-xs text-red-500 hover:text-red-600 font-semibold cursor-pointer shrink-0"
-                      >
-                        Clear
-                      </button>
+
+                    {/* Direct Image URL editor */}
+                    <div className="relative">
+                      <input
+                        id="cat-image-input"
+                        type="url"
+                        value={catForm.image}
+                        onChange={(e) => setCatForm({ ...catForm, image: e.target.value })}
+                        placeholder="Image URL (https://...)"
+                        className="input text-xs w-full"
+                      />
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <label
+                    <div
+                      onClick={() => !catUploading && catFileInputRef.current?.click()}
                       className={`relative rounded-2xl border-2 border-dashed border-[var(--border)] hover:border-[#B81862] bg-[var(--surface-2)]/60 hover:bg-[#B81862]/5 p-4 sm:p-5 flex flex-col items-center justify-center text-center cursor-pointer transition group ${
                         catUploading ? "opacity-75 pointer-events-none" : ""
                       }`}
@@ -1470,7 +1506,7 @@ function ProductsContent() {
                         <div className="py-2 flex flex-col items-center">
                           <Loader2 className="w-7 h-7 text-[#B81862] animate-spin mb-2" />
                           <span className="text-xs font-semibold text-[var(--foreground)]">
-                            Uploading image to Cloudinary...
+                            Uploading image...
                           </span>
                           <span className="text-[10px] text-[var(--muted)] mt-0.5">Please wait</span>
                         </div>
@@ -1487,16 +1523,7 @@ function ProductsContent() {
                           </span>
                         </>
                       )}
-                      <input
-                        ref={catFileInputRef}
-                        id="cat-image-upload"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleCatImageUpload}
-                        disabled={catUploading}
-                        className="hidden"
-                      />
-                    </label>
+                    </div>
 
                     {/* Direct Image URL input */}
                     <div className="relative">
